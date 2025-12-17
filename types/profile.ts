@@ -19,7 +19,7 @@ export interface ContactAndParentDetails {
   callingMobile: string
   whatsappMobile: string
   alternativeMobile?: string
-  
+
   // Parent/Guardian Details
   fatherName?: string
   fatherDeceased: boolean
@@ -34,44 +34,60 @@ export interface ContactAndParentDetails {
 }
 
 export interface AddressDetails {
-  currentAddress: string
-  permanentAddress?: string
+  // Current address individual fields
+  currentHouse?: string
+  currentCross?: string
+  currentArea?: string
+  currentDistrict?: string
+  currentCity?: string
+  currentPincode?: string
+  currentState?: string
+  currentAddress?: string // Combined computed field
+
+  // Permanent address individual fields
+  permanentHouse?: string
+  permanentCross?: string
+  permanentArea?: string
+  permanentDistrict?: string
+  permanentCity?: string
+  permanentPincode?: string
+  permanentState?: string
+  permanentAddress?: string // Combined computed field
+
   sameAsCurrent: boolean
   country: string
 }
 
 export interface TenthStandardDetails {
-  schoolName: string
-  city: string
-  district: string
-  pincode: string
-  state: string
-  board: 'STATE' | 'CBSE' | 'ICSE'
-  passingYear: number
-  passingMonth: number
-  marksType: 'PERCENTAGE' | 'SUBJECTS_TOTAL' | 'OUT_OF_1000'
-  percentage?: number
-  subjects?: number
-  totalMarks?: number
-  marksOutOf1000?: number
-  marksCard: string
+  tenthSchoolName: string
+  tenthAreaDistrictCity: string
+  tenthPincode: string
+  tenthState: string
+  tenthBoard: 'STATE' | 'CBSE' | 'ICSE'
+  tenthPassingYear: number
+  tenthPassingMonth: number
+  tenthMarksType: 'PERCENTAGE' | 'SUBJECTS_TOTAL' | 'OUT_OF_1000'
+  tenthPercentage?: number
+  tenthSubjects?: number
+  tenthTotalMarks?: number
+  tenthMarksOutOf1000?: number
+  tenthMarksCard: string
 }
 
 export interface TwelfthStandardDetails {
-  schoolName: string
-  city: string
-  district: string
-  pincode: string
-  state: string
-  board: 'STATE' | 'CBSE' | 'ICSE'
-  passingYear: number
-  passingMonth: number
-  marksType: 'PERCENTAGE' | 'SUBJECTS_TOTAL' | 'OUT_OF_1000'
-  percentage?: number
-  subjects?: number
-  totalMarks?: number
-  marksOutOf1000?: number
-  marksCard: string
+  twelfthSchoolName: string
+  twelfthAreaDistrictCity: string
+  twelfthPincode: string
+  twelfthState: string
+  twelfthBoard: 'STATE' | 'CBSE' | 'ICSE'
+  twelfthPassingYear: number
+  twelfthPassingMonth: number
+  twelfthMarksType: 'PERCENTAGE' | 'SUBJECTS_TOTAL' | 'OUT_OF_1000'
+  twelfthPercentage?: number
+  twelfthSubjects?: number
+  twelfthTotalMarks?: number
+  twelfthMarksOutOf1000?: number
+  twelfthMarksCard: string
 }
 
 export interface DiplomaDetails {
@@ -82,8 +98,8 @@ export interface DiplomaDetails {
   state: string
   stream: string
   certificate: string
-  semesterSgpa?: Array<{semester: number, sgpa: number}>
-  yearMarks?: Array<{year: number, marks: number}>
+  semesterSgpa?: Array<{ semester: number, sgpa: number }>
+  yearMarks?: Array<{ year: number, marks: number }>
   percentage: number
 }
 
@@ -106,16 +122,23 @@ export interface EngineeringDetails {
   usn: string
   libraryId: string
   residencyStatus: 'HOSTELITE' | 'LOCALITE'
-  
+
   // Hostel Details (conditional)
   hostelName?: string
   roomNumber?: string
   floorNumber?: string
-  
+
   // Local Details (conditional)
   localCity?: string
   transportMode?: 'COLLEGE_BUS' | 'PRIVATE_TRANSPORT' | 'PUBLIC_TRANSPORT' | 'WALKING'
   busRoute?: string
+
+  // Additional fields
+  branchMentorName: string
+  linkedin: string
+  github?: string
+  leetcode?: string
+  resume: string
 }
 
 export interface SemesterRecord {
@@ -193,4 +216,77 @@ export interface ProfileCompletionStatus {
   completedSteps: number[]
   isComplete: boolean
   kycStatus: 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'INCOMPLETE'
+}
+
+// 1. Add/expand types for 12th/Diploma step:
+export interface TwelfthDiplomaDetails {
+  // 12th Standard fields
+  twelfthOrDiploma: '12th' | 'Diploma'
+  // 12th fields
+  twelfthSchoolName?: string
+  twelfthArea?: string
+  twelfthDistrict?: string
+  twelfthCity?: string
+  twelfthPincode?: string
+  twelfthState?: string
+  twelfthBoard?: 'STATE' | 'CBSE' | 'ICSE'
+  twelfthPassingYear?: number
+  twelfthPassingMonth?: string
+  twelfthStatePercentage?: number
+  twelfthCbseSubjects?: number
+  twelfthCbseMarks?: number
+  twelfthCbsePercentage?: string
+  twelfthIcseMarks?: number
+  twelfthIcsePercentage?: string
+  twelfthMarkcard?: string
+  // Diploma fields
+  diplomaCollege?: string
+  diplomaArea?: string
+  diplomaDistrict?: string
+  diplomaCity?: string
+  diplomaPincode?: string
+  diplomaState?: string
+  diplomaCertificates?: string
+  diplomaSemesters?: Array<{
+    semester: number
+    sgpa?: number
+    cgpa?: number
+    marks?: number
+  }>
+  diplomaFirstYear?: number
+  diplomaSecondYear?: number
+  diplomaThirdYear?: number
+  diplomaPercentage?: string
+}
+// 2. Add/expand types for engineering academic step:
+export interface EngineeringAcademicDetails {
+  semesters: Array<{
+    semester: number
+    sgpa: number
+    cgpa: number
+    monthPassed: string
+    yearPassed: number
+    marksCard: string
+    failed?: boolean
+    failedSubjects?: Array<{
+      code: string
+      title: string
+      grade: string
+      month: string
+    }>
+    cleared?: boolean
+    clearedSubjects?: Array<{
+      code: string
+      title: string
+      grade: string
+      month: string
+      proof: string
+    }>
+  }>
+  finalCgpa: number
+  activeBacklogs: boolean
+  backlogSubjects?: Array<{
+    code: string
+    title: string
+  }>
 }

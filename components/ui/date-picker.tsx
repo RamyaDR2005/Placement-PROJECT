@@ -53,7 +53,7 @@ export function DatePicker({
           {date ? format(date, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] p-0" align="start" sideOffset={4}>
         <Calendar
           mode="single"
           selected={date}
@@ -94,10 +94,10 @@ export function YearPicker({
   toYear = new Date().getFullYear()
 }: YearPickerProps) {
   const [open, setOpen] = React.useState(false)
-  
+
   // Generate years array
   const years = Array.from(
-    { length: toYear - fromYear + 1 }, 
+    { length: toYear - fromYear + 1 },
     (_, i) => toYear - i
   )
 

@@ -5,24 +5,24 @@ import { ProfileCompletion } from "@/components/profile-completion"
 
 export default async function ProfilePage() {
   const session = await auth()
-  
+
   if (!session?.user?.id) {
     redirect("/login")
   }
 
-  // Check if user has a complete profile
+  // Check if user has a profile
   const profile = await prisma.profile.findUnique({
     where: { userId: session.user.id }
   })
 
-  // If profile is already complete, redirect to dashboard
-  if (profile?.isComplete) {
-    redirect("/dashboard")
-  }
+  // Allow viewing/editing profile even if complete
+  // The ProfileCompletion component will handle the display mode
 
   return (
-    <div className="min-h-screen bg-background">
-      <ProfileCompletion />
-    </div>
+    <main className="flex-1 bg-background min-h-screen">
+      <div className="container mx-auto py-8 flex flex-col gap-6">
+        <ProfileCompletion />
+      </div>
+    </main>
   )
 }

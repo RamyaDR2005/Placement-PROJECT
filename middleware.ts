@@ -1,8 +1,46 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+// Security headers
+const securityHeaders = {
+  // Prevent clickjacking
+  "X-Frame-Options": "DENY",
+  // Prevent MIME type sniffing
+  "X-Content-Type-Options": "nosniff",
+  // Enable XSS protection
+  "X-XSS-Protection": "1; mode=block",
+  // Referrer policy
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  // Permissions policy
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+
+// Content Security Policy
+const cspHeader = `
+  default-src 'self';
+  script-src 'self' 'unsafe-eval' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' blob: data: https:;
+  font-src 'self' data:;
+  connect-src 'self';
+  frame-ancestors 'none';
+  base-uri 'self';
+  form-action 'self';
+`.replace(/\s{2,}/g, ' ').trim()
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const response = NextResponse.next()
+
+  // Apply security headers to all responses
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value)
+  })
+
+  // Only apply CSP in production to avoid development issues
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set("Content-Security-Policy", cspHeader)
+  }
 
   // Skip middleware for API routes, static files, and auth pages
   if (
@@ -15,25 +53,34 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/verify-email") ||
     pathname.includes(".")
   ) {
-    return NextResponse.next()
+    return response
   }
 
   // Get session token from cookies to check authentication without importing auth
-  const sessionToken = request.cookies.get("authjs.session-token")?.value ||
-                      request.cookies.get("__Secure-authjs.session-token")?.value
+  const sessionToken = request.cookies.get("next-auth.session-token")?.value ||
+    request.cookies.get("__Secure-next-auth.session-token")?.value
 
   // If user is not authenticated, redirect to login
   if (!sessionToken) {
     if (pathname !== "/") {
-      return NextResponse.redirect(new URL("/login", request.url))
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("callbackUrl", pathname)
+      return NextResponse.redirect(loginUrl)
     }
-    return NextResponse.next()
+    return response
+  }
+
+  // For authenticated users on admin routes, verify admin role
+  // This is a basic check - full verification happens in the layout
+  if (pathname.startsWith("/admin")) {
+    // Let the admin layout handle the full role verification
+    return response
   }
 
   // For authenticated users, let the page components handle profile checks
   // This avoids Edge Runtime issues with Prisma and other Node.js modules
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {

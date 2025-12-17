@@ -6,12 +6,25 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { sendVerificationEmail } from "@/lib/email"
 
+// Ensure JWT secret is set
+if (!process.env.AUTH_SECRET) {
+  throw new Error("AUTH_SECRET environment variable is not set")
+}
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Ensure OAuth uses proper security settings
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
     CredentialsProvider({
       name: "credentials",
@@ -24,18 +37,28 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           return null
         }
 
+        // Input validation
+        const email = credentials.email as string
+        const password = credentials.password as string
+
+        if (email.length > 255 || password.length > 255) {
+          return null
+        }
+
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials.email as string
+            email: email.toLowerCase().trim()
           }
         })
 
         if (!user || !user.password) {
+          // Use same timing to prevent user enumeration
+          await bcrypt.compare(password, "$2a$10$invalidhashtopreventtimingattacks12345678901234567890123")
           return null
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
+          password,
           user.password
         )
 
@@ -59,24 +82,72 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours - session regeneration interval
   },
   pages: {
     signIn: "/login",
+    error: "/login",
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // On sign in, add user data to token
       if (user) {
         token.role = user.role
+        token.id = user.id
+        // Add timestamp for session validation
+        token.iat = Math.floor(Date.now() / 1000)
       }
+
+      // On session update, refresh user data from database
+      if (trigger === "update") {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub! },
+          select: { role: true, email: true, name: true, image: true }
+        })
+
+        if (dbUser) {
+          token.role = dbUser.role
+          token.email = dbUser.email
+          token.name = dbUser.name
+          token.picture = dbUser.image
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.sub!
         session.user.role = token.role as string
+        session.user.email = token.email!
+        session.user.name = token.name
+        session.user.image = token.picture
       }
       return session
     },
+    async signIn({ user, account }) {
+      // For OAuth providers, ensure email is verified
+      if (account?.provider === "google") {
+        return true // Google emails are pre-verified
+      }
+
+      // For credentials, verification is checked in authorize
+      return true
+    }
   },
   events: {
     async createUser({ user }) {
@@ -89,5 +160,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         }
       }
     },
+    async signIn({ user }) {
+      // Log sign in for security monitoring
+      console.log(`User signed in: ${user.email} at ${new Date().toISOString()}`)
+    }
   },
+  // Enable debug only in development
+  debug: process.env.NODE_ENV === "development",
 })

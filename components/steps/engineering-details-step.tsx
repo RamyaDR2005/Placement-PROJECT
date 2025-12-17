@@ -1,701 +1,697 @@
 "use client"
 
-import React, { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
+import type React from "react"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Building2, GraduationCap, Home, Bus, AlertCircle, CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { EngineeringDetails } from "@/types/profile"
-import { INDIAN_STATES, STATE_CITIES, DISTRICTS_BY_STATE, ENGINEERING_BRANCHES, SEAT_CATEGORIES, TRANSPORT_MODES } from "@/lib/location-data"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { DatePicker } from "@/components/ui/date-picker"
+import { DocumentUpload } from "@/components/ui/document-upload"
+import { ArrowLeft, AlertCircle, Plus, Trash2, Upload } from "lucide-react"
 
-const engineeringDetailsSchema = z.object({
-  collegeName: z.string().min(2, "College name is required"),
-  city: z.string().min(2, "City is required"),
-  district: z.string().min(2, "District is required"),
-  pincode: z.string().regex(/^\d{6}$/, "Please enter a valid 6-digit pincode"),
-  state: z.string().min(2, "State is required"),
-  branch: z.enum(["CSE", "ISE", "ECE", "EEE", "ME", "CE", "AIML", "DS"]),
-  entryType: z.enum(["REGULAR", "LATERAL"]),
-  seatCategory: z.enum(["KCET", "MANAGEMENT", "COMEDK"]),
-  usn: z.string().min(1, "USN is required"),
-  libraryId: z.string().min(1, "Library ID is required"),
-  residencyStatus: z.enum(["HOSTELITE", "LOCALITE"]),
-  
-  // Conditional hostel fields
-  hostelName: z.string().optional(),
-  roomNumber: z.string().optional(),
-  floorNumber: z.string().optional(),
-  
-  // Conditional local fields
-  localCity: z.string().optional(),
-  transportMode: z.enum(["COLLEGE_BUS", "PRIVATE_TRANSPORT", "PUBLIC_TRANSPORT", "WALKING"]).optional(),
-  busRoute: z.string().optional()
-}).refine((data) => {
-  if (data.residencyStatus === "HOSTELITE") {
-    return data.hostelName && data.roomNumber && data.floorNumber
-  }
-  if (data.residencyStatus === "LOCALITE") {
-    return data.localCity && data.transportMode
-  }
-  return true
-}, {
-  message: "Please fill all required fields for your residency status",
-  path: ["residencyStatus"]
-})
-
-type EngineeringDetailsForm = z.infer<typeof engineeringDetailsSchema>
-
-interface EngineeringDetailsStepProps {
-  data: Partial<EngineeringDetails>
-  onNext: (data: Partial<EngineeringDetails>) => Promise<void>
-  onPrevious?: () => void
-  isLoading: boolean
+interface SemesterData {
+  semester: number
+  sgpa: string
+  cgpa: string
+  monthPassed: string
+  yearPassed: string
+  marksCard: File | null
+  failed: boolean
+  failedSubjects: string[]
 }
 
-export function EngineeringDetailsStep({ data, onNext, onPrevious, isLoading }: EngineeringDetailsStepProps) {
-  const [selectedState, setSelectedState] = useState<string>(data.state || "")
+interface BacklogData {
+  code: string
+  title: string
+}
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, touchedFields }
-  } = useForm<EngineeringDetailsForm>({
-    resolver: zodResolver(engineeringDetailsSchema),
-    defaultValues: {
-      collegeName: data.collegeName || "",
-      city: data.city || "",
-      district: data.district || "",
-      pincode: data.pincode || "",
-      state: data.state || "",
-      branch: data.branch || undefined,
-      entryType: data.entryType || undefined,
-      seatCategory: data.seatCategory || undefined,
-      usn: data.usn || "",
-      libraryId: data.libraryId || "",
-      residencyStatus: data.residencyStatus || undefined,
-      hostelName: data.hostelName || "",
-      roomNumber: data.roomNumber || "",
-      floorNumber: data.floorNumber || "",
-      localCity: data.localCity || "",
-      transportMode: data.transportMode || undefined,
-      busRoute: data.busRoute || ""
-    }
+interface EngineeringFormData {
+  collegeName: string
+  district: string
+  pincode: string
+  branch: string
+  entryType: string
+  seatCategory: string
+  gender: string
+  usn: string
+  libraryId: string
+  batch: string
+  branchMentor: string
+  linkedinLink: string
+  githubLink: string
+  leetcodeLink: string
+  resumeUpload: File | null
+  semesters: SemesterData[]
+  finalCgpa: string
+  hasBacklogs: string
+  backlogs: BacklogData[]
+}
+
+interface EngineeringDetailsStepProps {
+  onNext: (data: EngineeringFormData) => void
+  onPrevious: () => void
+  initialData?: Partial<EngineeringFormData>
+}
+
+export function EngineeringDetailsStep({ onNext, onPrevious, initialData = {} }: EngineeringDetailsStepProps) {
+  const [formData, setFormData] = useState<EngineeringFormData>({
+    collegeName: "SHRI DHARMASTHALA MANJUNATHESHWARA COLLEGE OF ENGINEERING AND TECHNOLOGY",
+    district: "DHARWAD",
+    pincode: "580002",
+    branch: initialData.branch || "",
+    entryType: initialData.entryType || "",
+    seatCategory: initialData.seatCategory || "",
+    gender: initialData.gender || "",
+    usn: initialData.usn || "",
+    libraryId: initialData.libraryId || "",
+    batch: "2022 - 2026",
+    branchMentor: initialData.branchMentor || "",
+    linkedinLink: initialData.linkedinLink || "",
+    githubLink: initialData.githubLink || "",
+    leetcodeLink: initialData.leetcodeLink || "",
+    resumeUpload: initialData.resumeUpload || null,
+    semesters:
+      initialData.semesters ||
+      Array.from({ length: 6 }, (_, i): SemesterData => ({
+        semester: i + 1,
+        sgpa: "",
+        cgpa: "",
+        monthPassed: "",
+        yearPassed: "",
+        marksCard: null,
+        failed: false,
+        failedSubjects: [],
+      })),
+    finalCgpa: initialData.finalCgpa || "",
+    hasBacklogs: initialData.hasBacklogs || "",
+    backlogs: initialData.backlogs || [],
   })
 
-  const onSubmit = async (formData: EngineeringDetailsForm) => {
-    await onNext({
-      collegeName: formData.collegeName,
-      city: formData.city,
-      district: formData.district,
-      pincode: formData.pincode,
-      state: formData.state,
-      branch: formData.branch,
-      entryType: formData.entryType,
-      seatCategory: formData.seatCategory,
-      usn: formData.usn,
-      libraryId: formData.libraryId,
-      residencyStatus: formData.residencyStatus,
-      hostelName: formData.hostelName,
-      roomNumber: formData.roomNumber,
-      floorNumber: formData.floorNumber,
-      localCity: formData.localCity,
-      transportMode: formData.transportMode,
-      busRoute: formData.busRoute
-    })
-  }
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handlePrevious = () => {
-    if (onPrevious) {
-      onPrevious()
-    } else {
-      console.log("Previous navigation not available")
+  const handleInputChange = (field: string, value: string | boolean | File | null) => {
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value }
+
+      // If selecting "yes" for backlogs and there are no existing backlogs, add one
+      if (field === "hasBacklogs" && value === "yes" && prev.backlogs.length === 0) {
+        newData.backlogs = [{ code: "", title: "" }]
+      }
+      // If selecting "no" for backlogs, clear all backlogs
+      else if (field === "hasBacklogs" && value === "no") {
+        newData.backlogs = []
+      }
+
+      return newData
+    })
+
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }))
     }
   }
 
-  // Helper functions
-  const hasError = (fieldName: keyof EngineeringDetailsForm) => !!errors[fieldName]
-  const isFieldTouched = (fieldName: keyof EngineeringDetailsForm) => !!touchedFields[fieldName]
-  const isFieldValid = (fieldName: keyof EngineeringDetailsForm) => isFieldTouched(fieldName) && !hasError(fieldName)
+  const handleSemesterChange = (semesterIndex: number, field: string, value: string | boolean | File | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      semesters: prev.semesters.map((sem: SemesterData, index: number) => (index === semesterIndex ? { ...sem, [field]: value } : sem)),
+    }))
+  }
 
-  const residencyStatus = watch("residencyStatus")
-  const transportMode = watch("transportMode")
+  const addBacklog = () => {
+    setFormData((prev) => ({
+      ...prev,
+      backlogs: [...prev.backlogs, { code: "", title: "" }],
+    }))
+  }
+
+  const removeBacklog = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      backlogs: prev.backlogs.filter((_: BacklogData, i: number) => i !== index),
+    }))
+  }
+
+  const handleBacklogChange = (index: number, field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      backlogs: prev.backlogs.map((backlog: BacklogData, i: number) =>
+        i === index ? { ...backlog, [field]: value } : backlog,
+      ),
+    }))
+  }
+
+  const validateUSN = (usn: string, entryType: string, branch: string) => {
+    if (!entryType || !branch) return false
+
+    const validBranches = ["ME", "CE", "EEE", "ECE", "AIML", "CSE", "ISE"]
+    if (!validBranches.includes(branch)) return false
+
+    // Map branch codes for USN validation (USN uses different codes)
+    const usnBranchMap: Record<string, string> = {
+      "ME": "ME",
+      "CE": "CV",
+      "EEE": "EE",
+      "ECE": "EC",
+      "AIML": "AI",
+      "CSE": "CS",
+      "ISE": "IS"
+    }
+
+    const usnBranchCode = usnBranchMap[branch]
+
+    if (entryType === "REGULAR") {
+      const regex = new RegExp(`^2SD22${usnBranchCode}\\d{3}$`)
+      const number = Number.parseInt(usn.slice(-3))
+      return regex.test(usn) && number >= 1 && number <= 150
+    } else if (entryType === "LATERAL") {
+      const regex = new RegExp(`^2SD23${usnBranchCode}\\d{3}$`)
+      const number = Number.parseInt(usn.slice(-3))
+      return regex.test(usn) && number >= 400 && number <= 430
+    }
+
+    return false
+  }
+
+  const validateLibraryId = (libraryId: string, entryType: string) => {
+    if (!entryType) return false
+
+    if (entryType === "REGULAR") {
+      return /^22BE\d{4}$/.test(libraryId)
+    } else if (entryType === "LATERAL") {
+      return /^DIP23BE\d{3}$/.test(libraryId)
+    }
+
+    return false
+  }
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    // Basic validations
+    if (!formData.branch) newErrors.branch = "Branch is required"
+    if (!formData.entryType) newErrors.entryType = "Entry type is required"
+    if (!formData.seatCategory) newErrors.seatCategory = "Seat category is required"
+    if (!formData.gender) newErrors.gender = "Gender is required"
+
+    // USN validation
+    if (!formData.usn.trim()) {
+      newErrors.usn = "USN is required"
+    } else if (!validateUSN(formData.usn, formData.entryType, formData.branch)) {
+      newErrors.usn = "Invalid USN format"
+    }
+
+    // Library ID validation
+    if (!formData.libraryId.trim()) {
+      newErrors.libraryId = "Library ID is required"
+    } else if (!validateLibraryId(formData.libraryId, formData.entryType)) {
+      newErrors.libraryId = "Invalid Library ID format"
+    }
+
+    // Other validations
+    if (!formData.branchMentor.trim()) newErrors.branchMentor = "Branch mentor is required"
+    if (!formData.linkedinLink.trim()) {
+      newErrors.linkedinLink = "LinkedIn profile is required"
+    } else if (!/^https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+/.test(formData.linkedinLink)) {
+      newErrors.linkedinLink = "Enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)"
+    }
+
+    // GitHub and LeetCode for specific branches
+    const techBranches = ["CSE", "ISE", "AIML"]
+    if (techBranches.includes(formData.branch)) {
+      if (!formData.githubLink.trim()) {
+        newErrors.githubLink = "GitHub profile is required for your branch"
+      } else if (!/^https?:\/\/(www\.)?github\.com\/[\w-]+/.test(formData.githubLink)) {
+        newErrors.githubLink = "Enter a valid GitHub URL (e.g., https://github.com/username)"
+      }
+
+      if (!formData.leetcodeLink.trim()) {
+        newErrors.leetcodeLink = "LeetCode profile is required for your branch"
+      } else if (!/^https?:\/\/(www\.)?leetcode\.com\/(u\/)?[\w-]+/.test(formData.leetcodeLink)) {
+        newErrors.leetcodeLink = "Enter a valid LeetCode URL (e.g., https://leetcode.com/username)"
+      }
+    }
+
+    if (!formData.resumeUpload) newErrors.resumeUpload = "Resume upload is required"
+    if (!formData.finalCgpa) newErrors.finalCgpa = "Final CGPA is required"
+    if (!formData.hasBacklogs) newErrors.hasBacklogs = "Please specify if you have backlogs"
+
+    // Semester validations
+    formData.semesters.forEach((sem: SemesterData, index: number) => {
+      if (!sem.sgpa) newErrors[`sem${index}_sgpa`] = `Semester ${index + 1} SGPA is required`
+      if (!sem.cgpa) newErrors[`sem${index}_cgpa`] = `Semester ${index + 1} CGPA is required`
+      if (!sem.monthPassed) newErrors[`sem${index}_month`] = `Semester ${index + 1} month is required`
+      if (!sem.yearPassed) newErrors[`sem${index}_year`] = `Semester ${index + 1} year is required`
+      if (!sem.marksCard) newErrors[`sem${index}_marks`] = `Semester ${index + 1} marks card is required`
+    })
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (validateForm()) {
+      onNext(formData)
+    }
+  }
+
+  const branches = [
+    { value: "ME", label: "Mechanical Engineering" },
+    { value: "CE", label: "Civil Engineering" },
+    { value: "EEE", label: "Electrical and Electronics Engineering" },
+    { value: "ECE", label: "Electronics and Communication Engineering" },
+    { value: "AIML", label: "Artificial Intelligence and Machine Learning" },
+    { value: "CSE", label: "Computer Science Engineering" },
+    { value: "ISE", label: "Information Science Engineering" },
+  ]
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]
+
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear()
+    return Array.from({ length: 11 }, (_, i) => (currentYear - i).toString())
+  }
 
   return (
-    <div className="space-y-8">
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <div className="max-w-4xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-8 steps-form">
         {/* College Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Building2 className="w-5 h-5 text-blue-600" />
-              <span>College Information</span>
-            </CardTitle>
-            <CardDescription>
-              Details about your engineering college and location
-            </CardDescription>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold">College Information</CardTitle>
+            <CardDescription>Basic college and branch details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="collegeName" className="flex items-center space-x-1 text-sm font-medium">
-                <span>College Name</span>
-                <span className="text-red-500">*</span>
-                {isFieldValid("collegeName") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-              </Label>
-              <Input
-                id="collegeName"
-                {...register("collegeName")}
-                placeholder="Enter your college name"
-                className={cn(
-                  "w-full",
-                  hasError("collegeName") && "border-red-500 focus-visible:ring-red-500",
-                  isFieldValid("collegeName") && "border-green-500"
-                )}
-              />
-              {errors.collegeName && (
-                <p className="text-sm text-red-600 flex items-center space-x-1">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>{errors.collegeName.message}</span>
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city" className="flex items-center space-x-1 text-sm font-medium">
-                  <span>City</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("city") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Select onValueChange={(value) => setValue("city", value)}>
-                  <SelectTrigger className={cn(
-                    "w-full",
-                    hasError("city") && "border-red-500 focus:ring-red-500",
-                    isFieldValid("city") && "border-green-500"
-                  )}>
-                    <SelectValue placeholder="Select city" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label>College Name</Label>
+                <Input value={formData.collegeName} className="bg-muted w-full" readOnly />
+              </div>
+              <div>
+                <Label>District</Label>
+                <Input value={formData.district} className="bg-muted w-full" readOnly />
+              </div>
+              <div>
+                <Label>PIN Code</Label>
+                <Input value={formData.pincode} className="bg-muted w-full" readOnly />
+              </div>
+              <div>
+                <Label htmlFor="branch">Branch *</Label>
+                <Select value={formData.branch} onValueChange={(value) => handleInputChange("branch", value)}>
+                  <SelectTrigger className={`w-full ${errors.branch ? "border-red-500" : ""}`}>
+                    <SelectValue placeholder="Select Branch" />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedState && STATE_CITIES[selectedState]?.map(city => (
-                      <SelectItem key={city} value={city}>
-                        {city}
-                      </SelectItem>
-                    ))}
-                    {(!selectedState || !STATE_CITIES[selectedState]) && (
-                      <SelectItem value="__placeholder__" disabled>Select state first</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                {errors.city && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.city.message}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="district" className="flex items-center space-x-1 text-sm font-medium">
-                  <span>District</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("district") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Select onValueChange={(value) => setValue("district", value)}>
-                  <SelectTrigger className={cn(
-                    "w-full",
-                    hasError("district") && "border-red-500 focus:ring-red-500",
-                    isFieldValid("district") && "border-green-500"
-                  )}>
-                    <SelectValue placeholder="Select district" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedState && DISTRICTS_BY_STATE[selectedState]?.map(district => (
-                      <SelectItem key={district} value={district}>
-                        {district}
-                      </SelectItem>
-                    ))}
-                    {(!selectedState || !DISTRICTS_BY_STATE[selectedState]) && (
-                      <SelectItem value="__placeholder__" disabled>Select state first</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                {errors.district && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.district.message}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state" className="flex items-center space-x-1 text-sm font-medium">
-                  <span>State</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("state") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Select onValueChange={(value) => {
-                  setValue("state", value)
-                  setSelectedState(value)
-                  // Clear city and district when state changes
-                  setValue("city", "")
-                  setValue("district", "")
-                }}>
-                  <SelectTrigger className={cn(
-                    "w-full",
-                    hasError("state") && "border-red-500 focus:ring-red-500",
-                    isFieldValid("state") && "border-green-500"
-                  )}>
-                    <SelectValue placeholder="Select state" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDIAN_STATES.map(state => (
-                      <SelectItem key={state} value={state}>
-                        {state}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.state && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.state.message}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pincode" className="flex items-center space-x-1 text-sm font-medium">
-                  <span>Pincode</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("pincode") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Input
-                  id="pincode"
-                  {...register("pincode")}
-                  placeholder="Enter 6-digit pincode"
-                  maxLength={6}
-                  className={cn(
-                    "w-full",
-                    hasError("pincode") && "border-red-500 focus-visible:ring-red-500",
-                    isFieldValid("pincode") && "border-green-500"
-                  )}
-                />
-                {errors.pincode && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.pincode.message}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Course Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <GraduationCap className="w-5 h-5 text-green-600" />
-              <span>Course Details</span>
-            </CardTitle>
-            <CardDescription>
-              Your engineering branch and admission details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center space-x-1 text-sm font-medium">
-                  <span>Engineering Branch</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("branch") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Select onValueChange={(value) => setValue("branch", value as any)}>
-                  <SelectTrigger className={cn(
-                    "w-full",
-                    hasError("branch") && "border-red-500 focus:ring-red-500",
-                    isFieldValid("branch") && "border-green-500"
-                  )}>
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ENGINEERING_BRANCHES.map(branch => (
+                    {branches.map((branch) => (
                       <SelectItem key={branch.value} value={branch.value}>
                         {branch.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.branch && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.branch.message}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center space-x-1 text-sm font-medium">
-                  <span>Entry Type</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("entryType") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Select onValueChange={(value) => setValue("entryType", value as "REGULAR" | "LATERAL")}>
-                  <SelectTrigger className={cn(
-                    "w-full",
-                    hasError("entryType") && "border-red-500 focus:ring-red-500",
-                    isFieldValid("entryType") && "border-green-500"
-                  )}>
-                    <SelectValue placeholder="Select entry type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="REGULAR">Regular (1st Year)</SelectItem>
-                    <SelectItem value="LATERAL">Lateral Entry (3rd Year)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.entryType && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.entryType.message}</span>
-                  </p>
-                )}
+                {errors.branch && <p className="text-sm text-red-500 mt-1">{errors.branch}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center space-x-1 text-sm font-medium">
-                  <span>Seat Category</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("seatCategory") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Select onValueChange={(value) => setValue("seatCategory", value as any)}>
-                  <SelectTrigger className={cn(
-                    "w-full",
-                    hasError("seatCategory") && "border-red-500 focus:ring-red-500",
-                    isFieldValid("seatCategory") && "border-green-500"
-                  )}>
-                    <SelectValue placeholder="Select seat category" />
+              <div>
+                <Label htmlFor="entryType">Entry Type *</Label>
+                <Select value={formData.entryType} onValueChange={(value) => handleInputChange("entryType", value)}>
+                  <SelectTrigger className={`w-full ${errors.entryType ? "border-red-500" : ""}`}>
+                    <SelectValue placeholder="Select Entry Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SEAT_CATEGORIES.map(category => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="REGULAR">Regular Student</SelectItem>
+                    <SelectItem value="LATERAL">Lateral Entry Student</SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.seatCategory && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.seatCategory.message}</span>
-                  </p>
-                )}
+                {errors.entryType && <p className="text-sm text-red-500 mt-1">{errors.entryType}</p>}
               </div>
+              <div>
+                <Label htmlFor="seatCategory">Seat Category *</Label>
+                <Select value={formData.seatCategory} onValueChange={(value) => handleInputChange("seatCategory", value)}>
+                  <SelectTrigger className={`w-full ${errors.seatCategory ? "border-red-500" : ""}`}>
+                    <SelectValue placeholder="Select Seat Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KCET">KCET</SelectItem>
+                    <SelectItem value="MANAGEMENT">Management</SelectItem>
+                    <SelectItem value="COMEDK">COMEDK</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.seatCategory && <p className="text-sm text-red-500 mt-1">{errors.seatCategory}</p>}
+              </div>
+              <div>
+                <Label htmlFor="gender">Gender *</Label>
+                <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
+                  <SelectTrigger className={`w-full ${errors.gender ? "border-red-500" : ""}`}>
+                    <SelectValue placeholder="Select Gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">Male</SelectItem>
+                    <SelectItem value="FEMALE">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.gender && <p className="text-sm text-red-500 mt-1">{errors.gender}</p>}
+              </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="usn" className="flex items-center space-x-1 text-sm font-medium">
-                  <span>USN</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("usn") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Input
-                  id="usn"
-                  {...register("usn")}
-                  placeholder="Enter your USN"
-                  className={cn(
-                    "w-full",
-                    hasError("usn") && "border-red-500 focus-visible:ring-red-500",
-                    isFieldValid("usn") && "border-green-500"
-                  )}
-                />
-                {errors.usn && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.usn.message}</span>
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="usn">University Seat Number (USN) *</Label>
+              <Input
+                id="usn"
+                value={formData.usn}
+                onChange={(e) => handleInputChange("usn", e.target.value)}
+                className={`w-full ${errors.usn ? "border-red-500" : ""}`}
+                placeholder="e.g., 2SD22ME001 or 2SD23CS400"
+              />
+              {errors.usn && <p className="text-sm text-red-500 mt-1">{errors.usn}</p>}
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: 2SD22[BRANCH][001-150] for Regular, 2SD23[BRANCH][400-430] for Lateral
+              </p>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="libraryId" className="flex items-center space-x-1 text-sm font-medium">
-                  <span>Library ID</span>
-                  <span className="text-red-500">*</span>
-                  {isFieldValid("libraryId") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                </Label>
-                <Input
-                  id="libraryId"
-                  {...register("libraryId")}
-                  placeholder="Enter your library ID"
-                  className={cn(
-                    "w-full",
-                    hasError("libraryId") && "border-red-500 focus-visible:ring-red-500",
-                    isFieldValid("libraryId") && "border-green-500"
-                  )}
-                />
-                {errors.libraryId && (
-                  <p className="text-sm text-red-600 flex items-center space-x-1">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>{errors.libraryId.message}</span>
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="libraryId">Library ID Card Number *</Label>
+              <Input
+                id="libraryId"
+                value={formData.libraryId}
+                onChange={(e) => handleInputChange("libraryId", e.target.value)}
+                className={`w-full ${errors.libraryId ? "border-red-500" : ""}`}
+                placeholder="e.g., 22BE1234 or DIP23BE123"
+              />
+              {errors.libraryId && <p className="text-sm text-red-500 mt-1">{errors.libraryId}</p>}
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: 22BE[4-digit] for Regular, DIP23BE[3-digit] for Lateral
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Residency Details */}
+        {/* Additional Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Home className="w-5 h-5 text-purple-600" />
-              <span>Residency Status</span>
-            </CardTitle>
-            <CardDescription>
-              Are you staying in hostel or as a localite?
-            </CardDescription>
+            <CardTitle>Additional Details</CardTitle>
+            <CardDescription>Mentor, profiles, and resume information</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label className="flex items-center space-x-1 text-sm font-medium">
-                <span>Residency Status</span>
-                <span className="text-red-500">*</span>
-                {isFieldValid("residencyStatus") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-              </Label>
-              <Select onValueChange={(value) => setValue("residencyStatus", value as "HOSTELITE" | "LOCALITE")}>
-                <SelectTrigger className={cn(
-                  "w-full",
-                  hasError("residencyStatus") && "border-red-500 focus:ring-red-500",
-                  isFieldValid("residencyStatus") && "border-green-500"
-                )}>
-                  <SelectValue placeholder="Select residency status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="HOSTELITE">Hostelite</SelectItem>
-                  <SelectItem value="LOCALITE">Localite</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.residencyStatus && (
-                <p className="text-sm text-red-600 flex items-center space-x-1">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>{errors.residencyStatus.message}</span>
-                </p>
-              )}
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Batch</Label>
+              <Input value={formData.batch} className="bg-muted w-full" readOnly />
             </div>
 
-            {/* Hostel Details */}
-            {residencyStatus === "HOSTELITE" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="space-y-2">
-                  <Label htmlFor="hostelName" className="flex items-center space-x-1 text-sm font-medium">
-                    <span>Hostel Name</span>
-                    <span className="text-red-500">*</span>
-                    {isFieldValid("hostelName") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                  </Label>
+            <div>
+              <Label htmlFor="branchMentor">Branch Mentor Name *</Label>
+              <Input
+                id="branchMentor"
+                value={formData.branchMentor}
+                onChange={(e) => handleInputChange("branchMentor", e.target.value)}
+                className={`w-full ${errors.branchMentor ? "border-red-500" : ""}`}
+                placeholder="e.g., DR. JOHN DOE"
+              />
+              {errors.branchMentor && <p className="text-sm text-red-500 mt-1">{errors.branchMentor}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="linkedinLink">LinkedIn Profile Link *</Label>
+              <Input
+                id="linkedinLink"
+                type="url"
+                value={formData.linkedinLink}
+                onChange={(e) => handleInputChange("linkedinLink", e.target.value)}
+                className={`w-full ${errors.linkedinLink ? "border-red-500" : ""}`}
+                placeholder="https://www.linkedin.com/in/yourprofile/"
+              />
+              {errors.linkedinLink && <p className="text-sm text-red-500 mt-1">{errors.linkedinLink}</p>}
+            </div>
+
+            {["CSE", "ISE", "AIML"].includes(formData.branch) && (
+              <>
+                <div>
+                  <Label htmlFor="githubLink">GitHub Profile Link *</Label>
                   <Input
-                    id="hostelName"
-                    {...register("hostelName")}
-                    placeholder="Enter hostel name"
-                    className={cn(
-                      "w-full",
-                      hasError("hostelName") && "border-red-500 focus-visible:ring-red-500",
-                      isFieldValid("hostelName") && "border-green-500"
-                    )}
+                    id="githubLink"
+                    type="url"
+                    value={formData.githubLink}
+                    onChange={(e) => handleInputChange("githubLink", e.target.value)}
+                    className={`w-full ${errors.githubLink ? "border-red-500" : ""}`}
+                    placeholder="https://github.com/yourprofile"
                   />
-                  {errors.hostelName && (
-                    <p className="text-sm text-red-600 flex items-center space-x-1">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>{errors.hostelName.message}</span>
-                    </p>
-                  )}
+                  {errors.githubLink && <p className="text-sm text-red-500 mt-1">{errors.githubLink}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">Mandatory for ISE, CSE, AIML students</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="roomNumber" className="flex items-center space-x-1 text-sm font-medium">
-                    <span>Room Number</span>
-                    <span className="text-red-500">*</span>
-                    {isFieldValid("roomNumber") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                  </Label>
+                <div>
+                  <Label htmlFor="leetcodeLink">LeetCode Profile Link *</Label>
                   <Input
-                    id="roomNumber"
-                    {...register("roomNumber")}
-                    placeholder="Enter room number"
-                    className={cn(
-                      "w-full",
-                      hasError("roomNumber") && "border-red-500 focus-visible:ring-red-500",
-                      isFieldValid("roomNumber") && "border-green-500"
-                    )}
+                    id="leetcodeLink"
+                    type="url"
+                    value={formData.leetcodeLink}
+                    onChange={(e) => handleInputChange("leetcodeLink", e.target.value)}
+                    className={`w-full ${errors.leetcodeLink ? "border-red-500" : ""}`}
+                    placeholder="https://leetcode.com/yourprofile/"
                   />
-                  {errors.roomNumber && (
-                    <p className="text-sm text-red-600 flex items-center space-x-1">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>{errors.roomNumber.message}</span>
-                    </p>
-                  )}
+                  {errors.leetcodeLink && <p className="text-sm text-red-500 mt-1">{errors.leetcodeLink}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">Mandatory for ISE, CSE, AIML students</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="floorNumber" className="flex items-center space-x-1 text-sm font-medium">
-                    <span>Floor Number</span>
-                    <span className="text-red-500">*</span>
-                    {isFieldValid("floorNumber") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                  </Label>
-                  <Input
-                    id="floorNumber"
-                    {...register("floorNumber")}
-                    placeholder="Enter floor number"
-                    className={cn(
-                      "w-full",
-                      hasError("floorNumber") && "border-red-500 focus-visible:ring-red-500",
-                      isFieldValid("floorNumber") && "border-green-500"
-                    )}
-                  />
-                  {errors.floorNumber && (
-                    <p className="text-sm text-red-600 flex items-center space-x-1">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>{errors.floorNumber.message}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
+              </>
             )}
 
-            {/* Local Details */}
-            {residencyStatus === "LOCALITE" && (
-              <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="localCity" className="flex items-center space-x-1 text-sm font-medium">
-                      <span>Local City</span>
-                      <span className="text-red-500">*</span>
-                      {isFieldValid("localCity") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                    </Label>
-                    <Input
-                      id="localCity"
-                      {...register("localCity")}
-                      placeholder="Enter your local city"
-                      className={cn(
-                        "w-full",
-                        hasError("localCity") && "border-red-500 focus-visible:ring-red-500",
-                        isFieldValid("localCity") && "border-green-500"
+            <DocumentUpload
+              onFileChange={(file) => handleInputChange("resumeUpload", file)}
+              accept="application/pdf"
+              maxSizeMB={10}
+              label="Upload Professional Resume"
+              required={true}
+              error={errors.resumeUpload}
+              initialFile={formData.resumeUpload as File | null}
+              description="• File name format: USN_Resume.pdf<br>• Maximum file size: 10MB<br>• PDF format only<br>• Include professional photo in resume"
+              placeholder="Drop your resume PDF here or click to select"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Engineering Academic Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Engineering Academic Details</CardTitle>
+            <CardDescription>Semester-wise academic performance</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {formData.semesters.map((semester: SemesterData, index: number) => (
+              <Card key={index} className="bg-gray-50/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Semester {semester.semester}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`sem${index}_sgpa`}>SGPA *</Label>
+                      <Input
+                        id={`sem${index}_sgpa`}
+                        type="number"
+                        value={semester.sgpa}
+                        onChange={(e) => handleSemesterChange(index, "sgpa", e.target.value)}
+                        className={`w-full ${errors[`sem${index}_sgpa`] ? "border-red-500" : ""}`}
+                        placeholder="0.00"
+                        min="0"
+                        max="10"
+                        step="0.01"
+                      />
+                      {errors[`sem${index}_sgpa`] && (
+                        <p className="text-sm text-red-500 mt-1">{errors[`sem${index}_sgpa`]}</p>
                       )}
-                    />
-                    {errors.localCity && (
-                      <p className="text-sm text-red-600 flex items-center space-x-1">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.localCity.message}</span>
-                      </p>
-                    )}
+                    </div>
+                    <div>
+                      <Label htmlFor={`sem${index}_cgpa`}>CGPA *</Label>
+                      <Input
+                        id={`sem${index}_cgpa`}
+                        type="number"
+                        value={semester.cgpa}
+                        onChange={(e) => handleSemesterChange(index, "cgpa", e.target.value)}
+                        className={`w-full ${errors[`sem${index}_cgpa`] ? "border-red-500" : ""}`}
+                        placeholder="0.00"
+                        min="0"
+                        max="10"
+                        step="0.01"
+                      />
+                      {errors[`sem${index}_cgpa`] && (
+                        <p className="text-sm text-red-500 mt-1">{errors[`sem${index}_cgpa`]}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor={`sem${index}_month`}>Month Passed *</Label>
+                      <Select
+                        value={semester.monthPassed}
+                        onValueChange={(value) => handleSemesterChange(index, "monthPassed", value)}
+                      >
+                        <SelectTrigger className={`w-full ${errors[`sem${index}_month`] ? "border-red-500" : ""}`}>
+                          <SelectValue placeholder="Select Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month) => (
+                            <SelectItem key={month} value={month}>
+                              {month}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors[`sem${index}_month`] && (
+                        <p className="text-sm text-red-500 mt-1">{errors[`sem${index}_month`]}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor={`sem${index}_year`}>Year Passed *</Label>
+                      <Select
+                        value={semester.yearPassed}
+                        onValueChange={(value) => handleSemesterChange(index, "yearPassed", value)}
+                      >
+                        <SelectTrigger className={`w-full ${errors[`sem${index}_year`] ? "border-red-500" : ""}`}>
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {generateYears().map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors[`sem${index}_year`] && (
+                        <p className="text-sm text-red-500 mt-1">{errors[`sem${index}_year`]}</p>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center space-x-1 text-sm font-medium">
-                      <span>Transport Mode</span>
-                      <span className="text-red-500">*</span>
-                      {isFieldValid("transportMode") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                    </Label>
-                    <Select onValueChange={(value) => setValue("transportMode", value as any)}>
-                      <SelectTrigger className={cn(
-                        "w-full",
-                        hasError("transportMode") && "border-red-500 focus:ring-red-500",
-                        isFieldValid("transportMode") && "border-green-500"
-                      )}>
-                        <SelectValue placeholder="Select transport mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TRANSPORT_MODES.map(mode => (
-                          <SelectItem key={mode.value} value={mode.value}>
-                            {mode.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.transportMode && (
-                      <p className="text-sm text-red-600 flex items-center space-x-1">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.transportMode.message}</span>
-                      </p>
-                    )}
-                  </div>
+                  <DocumentUpload
+                    onFileChange={(file) => handleSemesterChange(index, "marksCard", file)}
+                    accept="image/jpeg,image/png,application/pdf"
+                    maxSizeMB={10}
+                    label={`Upload Semester ${semester.semester} Marks Card`}
+                    required={true}
+                    error={errors[`sem${index}_marks`]}
+                    initialFile={semester.marksCard as File | null}
+                    description={`Format: USN_Sem${semester.semester}_MarksCard.jpg/pdf • Max 10MB • JPG/PNG/PDF`}
+                    placeholder="Drop your marks card here or click to select"
+                  />
+                </CardContent>
+              </Card>
+            ))}
+
+            <div>
+              <Label htmlFor="finalCgpa">6th Semester CGPA *</Label>
+              <Input
+                id="finalCgpa"
+                type="number"
+                value={formData.finalCgpa}
+                onChange={(e) => handleInputChange("finalCgpa", e.target.value)}
+                className={`w-full ${errors.finalCgpa ? "border-red-500" : ""}`}
+                placeholder="0.00"
+                min="0"
+                max="10"
+                step="0.01"
+              />
+              {errors.finalCgpa && <p className="text-sm text-red-500 mt-1">{errors.finalCgpa}</p>}
+            </div>
+
+            <div>
+              <Label>Active Backlogs *</Label>
+              <RadioGroup
+                value={formData.hasBacklogs}
+                onValueChange={(value) => handleInputChange("hasBacklogs", value)}
+                className="mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="backlogs_yes" />
+                  <Label htmlFor="backlogs_yes" className="cursor-pointer font-normal">Yes</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="backlogs_no" />
+                  <Label htmlFor="backlogs_no" className="cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+              {errors.hasBacklogs && <p className="text-sm text-red-500 mt-1">{errors.hasBacklogs}</p>}
+            </div>
 
-                {transportMode === "COLLEGE_BUS" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="busRoute" className="flex items-center space-x-1 text-sm font-medium">
-                      <span>Bus Route</span>
-                      <span className="text-red-500">*</span>
-                      {isFieldValid("busRoute") && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                    </Label>
-                    <Input
-                      id="busRoute"
-                      {...register("busRoute")}
-                      placeholder="Enter your bus route"
-                      className={cn(
-                        "w-full",
-                        hasError("busRoute") && "border-red-500 focus-visible:ring-red-500",
-                        isFieldValid("busRoute") && "border-green-500"
-                      )}
-                    />
-                    {errors.busRoute && (
-                      <p className="text-sm text-red-600 flex items-center space-x-1">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.busRoute.message}</span>
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+            {formData.hasBacklogs === "yes" && (
+              <Card className="bg-red-50/50 border-red-200">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    Backlog Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {formData.backlogs.map((backlog: BacklogData, index: number) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                      <div>
+                        <Label htmlFor={`backlog_code_${index}`}>Subject Code</Label>
+                        <Input
+                          id={`backlog_code_${index}`}
+                          value={backlog.code}
+                          onChange={(e) => handleBacklogChange(index, "code", e.target.value)}
+                          placeholder="e.g., 18ME101"
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <Label htmlFor={`backlog_title_${index}`}>Subject Title</Label>
+                          <Input
+                            id={`backlog_title_${index}`}
+                            value={backlog.title}
+                            onChange={(e) => handleBacklogChange(index, "title", e.target.value)}
+                            placeholder="e.g., ENGINEERING MATHEMATICS"
+                            className="w-full"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeBacklog(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={addBacklog} className="w-full bg-transparent">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Another Backlog
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </CardContent>
         </Card>
 
-        {/* Navigation */}
-        <div className="pt-6 border-t space-y-4">
-          <div className="text-sm text-muted-foreground text-center">
-            Step 6 of 7 - Engineering Details
-          </div>
-          <div className="flex gap-3 justify-center">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={handlePrevious} 
-              className="flex-1 md:flex-none md:px-8 flex items-center justify-center space-x-1"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Previous</span>
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading} 
-              className="flex-1 md:flex-none md:px-8 flex items-center justify-center space-x-1"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <span>Continue</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </Button>
-          </div>
+        <div className="flex justify-between pt-4">
+          <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <Button type="submit" size="lg" className="px-8 py-3">
+            Next Step
+          </Button>
         </div>
       </form>
     </div>

@@ -1,202 +1,415 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
-import { AppSidebar } from "@/components/app-sidebar"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
-import { SectionCards } from "@/components/section-cards"
-import { SiteHeader } from "@/components/site-header"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  User, 
-  TrendingUp, 
-  Calendar,
-  FileText,
-  Building
-} from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import {
+  IconBriefcase,
+  IconCalendar,
+  IconFileText,
+  IconBuilding,
+  IconAlertCircle,
+  IconUsers,
+  IconCircleCheck,
+  IconArrowRight,
+  IconTarget,
+  IconChartBar,
+  IconDownload
+} from "@tabler/icons-react"
+import Link from "next/link"
 
-import data from "./data.json"
-
-export default async function Page() {
+export default async function DashboardPage() {
   const session = await auth()
-  
+
   if (!session?.user?.id) {
     redirect("/login")
   }
 
-  // Check if user has completed profile
-  const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id }
+  // Get user with profile
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: { profile: true }
   })
 
-  // If profile is not complete, redirect to profile completion
-  if (!profile?.isComplete) {
-    redirect("/profile")
+  if (!user) {
+    redirect("/login")
   }
 
-  return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
+  const isAdmin = user.role === 'ADMIN'
+
+  // Fetch dashboard statistics
+  const [
+    totalJobs,
+    activeJobs,
+    myApplications,
+    upcomingEvents,
+    totalStudents,
+    verifiedProfiles
+  ] = await Promise.all([
+    prisma.job.count().catch(() => 0),
+    prisma.job.count({
+      where: {
+        status: 'ACTIVE',
+        isVisible: true
       }
-    >
-      <AppSidebar variant="inset" />
-      <SidebarInset className="flex flex-col">
-        <SiteHeader />
-        
-        {/* Main Content */}
-        <main className="flex-1 bg-muted/30">
-          <div className="@container/main flex flex-1 flex-col">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {/* Welcome Section */}
-              <div className="mx-4 lg:mx-6 rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 lg:p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div>
-                    <h1 className="text-xl lg:text-2xl font-bold mb-2">
-                      Welcome back, {session.user.name?.split(' ')[0]}! 👋
-                    </h1>
-                    <p className="text-muted-foreground text-sm lg:text-base">
-                      Your placement dashboard is ready. Track your progress and explore new opportunities.
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button size="sm" className="gap-2">
-                      <FileText size={16} />
+    }).catch(() => 0),
+    isAdmin ? Promise.resolve(null) : prisma.application.count({
+      where: { userId: session.user.id }
+    }).catch(() => 0),
+    prisma.scheduleEvent.count({
+      where: {
+        date: { gte: new Date() },
+        status: { in: ['SCHEDULED', 'ONGOING'] },
+        isVisible: true
+      }
+    }).catch(() => 0),
+    isAdmin ? prisma.user.count({
+      where: { role: 'STUDENT' }
+    }).catch(() => 0) : Promise.resolve(null),
+    isAdmin ? prisma.profile.count({
+      where: { kycStatus: 'VERIFIED' }
+    }).catch(() => 0) : Promise.resolve(null)
+  ])
+
+  // Calculate profile completion
+  const profileCompletionScore = user.profile ? calculateProfileCompletion(user.profile) : 0
+  const hasProfile = !!user.profile
+  const isKycVerified = user.profile?.kycStatus === 'VERIFIED'
+
+  return (
+    <main className="flex-1 bg-white min-h-screen">
+      <div className="container mx-auto max-w-7xl px-4 py-6 space-y-6">
+        {/* Welcome Header */}
+        <div className="rounded-lg border border-neutral-200 bg-white p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold mb-2">
+                Welcome back, {session.user.name?.split(' ')[0]}! 👋
+              </h1>
+              <p className="text-muted-foreground">
+                {isAdmin
+                  ? "Manage placements and track student progress"
+                  : "Track your placement journey and explore new opportunities"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {!isAdmin && (
+                <>
+                  <Link href="/profile">
+                    <Button size="sm" variant="outline" className="gap-2">
+                      <IconFileText size={16} />
                       Update Profile
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Building size={16} />
+                  </Link>
+                  {isKycVerified && (
+                    <Link href="/documents">
+                      <Button size="sm" variant="outline" className="gap-2">
+                        <IconDownload size={16} />
+                        Download ID Card
+                      </Button>
+                    </Link>
+                  )}
+                  <Link href="/jobs">
+                    <Button size="sm" className="gap-2">
+                      <IconBuilding size={16} />
                       Browse Jobs
                     </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats Cards */}
-              <SectionCards />
-
-              {/* Charts and Analytics */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 px-4 lg:px-6">
-                {/* Main Chart */}
-                <div className="xl:col-span-2">
-                  <ChartAreaInteractive />
-                </div>
-
-                {/* Quick Stats */}
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <User size={16} />
-                        Profile Status
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Completion</span>
-                        <Badge variant="secondary">100%</Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Verification</span>
-                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                          Verified
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Documents</span>
-                        <Badge variant="outline">7/7 Uploaded</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <TrendingUp size={16} />
-                        This Month
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Applications</span>
-                        <span className="font-semibold">5</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Interviews</span>
-                        <span className="font-semibold">2</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Offers</span>
-                        <span className="font-semibold text-green-600">1</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Calendar size={16} />
-                        Upcoming
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                          <div>
-                            <p className="text-sm font-medium">Microsoft Interview</p>
-                            <p className="text-xs text-muted-foreground">Tomorrow, 2:00 PM</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
-                          <div>
-                            <p className="text-sm font-medium">Application Deadline</p>
-                            <p className="text-xs text-muted-foreground">Dec 30, 2024</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* Recent Applications Table */}
-              <div className="px-4 lg:px-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div>
-                        <CardTitle className="text-lg">Recent Applications</CardTitle>
-                        <CardDescription>
-                          Track your job applications and their current status
-                        </CardDescription>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        View All Applications
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="overflow-hidden">
-                      <DataTable data={data} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </Link>
+                </>
+              )}
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button size="sm" className="gap-2">
+                    <IconChartBar size={16} />
+                    Admin Dashboard
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+        </div>
+
+        {/* KYC Status Alert for students */}
+        {!isAdmin && !hasProfile && (
+          <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <IconAlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-red-900 dark:text-red-200">
+                    Profile Setup Required
+                  </h3>
+                  <p className="text-sm text-red-800 dark:text-red-300 mt-1">
+                    Please complete your profile to access placement opportunities.
+                  </p>
+                </div>
+                <Link href="/profile">
+                  <Button size="sm">
+                    Create Profile
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!isAdmin && hasProfile && user.profile?.kycStatus === 'PENDING' && (
+          <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <IconAlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-yellow-900 dark:text-yellow-200">
+                    KYC Verification Pending
+                  </h3>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
+                    Your account is under review. Please upload your College ID card for verification.
+                  </p>
+                </div>
+                <Link href="/profile">
+                  <Button size="sm" variant="outline">
+                    Upload Documents
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!isAdmin && hasProfile && user.profile?.kycStatus === 'UNDER_REVIEW' && (
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <IconAlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-200">
+                    KYC Verification In Progress
+                  </h3>
+                  <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
+                    Your documents are being verified by the admin. You'll be notified once approved.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!isAdmin && profileCompletionScore < 100 && isKycVerified && (
+          <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <IconAlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-yellow-900 dark:text-yellow-200">
+                    Complete Your Profile
+                  </h3>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
+                    Your profile is {profileCompletionScore}% complete. Complete it to apply for jobs.
+                  </p>
+                  <Progress value={profileCompletionScore} className="mt-3 h-2" />
+                </div>
+                <Link href="/profile">
+                  <Button size="sm" variant="outline">
+                    Complete Now
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Stats Grid */}
+        {isAdmin ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalStudents}</div>
+                <p className="text-xs text-muted-foreground">
+                  {verifiedProfiles} verified
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeJobs}</div>
+                <p className="text-xs text-muted-foreground">
+                  {totalJobs} total posted
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{upcomingEvents}</div>
+                <p className="text-xs text-muted-foreground">
+                  Scheduled
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Pending KYC</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {(totalStudents || 0) - (verifiedProfiles || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Need verification
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeJobs}</div>
+                <p className="text-xs text-muted-foreground">
+                  Available to apply
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">My Applications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myApplications || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total applications
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{upcomingEvents}</div>
+                <p className="text-xs text-muted-foreground">
+                  Scheduled
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Profile Score</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{profileCompletionScore}%</div>
+                <p className="text-xs text-muted-foreground">
+                  Completion
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Recent Job Openings</CardTitle>
+                  <CardDescription>Latest opportunities posted</CardDescription>
+                </div>
+                <Link href="/jobs">
+                  <Button variant="ghost" size="sm">
+                    View All
+                    <IconArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                <IconBriefcase className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No active jobs at the moment</p>
+                <p className="text-xs mt-1">Check back later for new opportunities</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Upcoming Events</CardTitle>
+                  <CardDescription>Scheduled interviews and sessions</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm">
+                  View All
+                  <IconArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                <IconCalendar className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No upcoming events</p>
+                <p className="text-xs mt-1">Events will appear here when scheduled</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </main>
   )
+}
+
+// Helper function to calculate profile completion
+function calculateProfileCompletion(profile: any): number {
+  let score = 0
+  const totalFields = 20
+
+  // Personal Information (5 points)
+  if (profile.firstName) score++
+  if (profile.lastName) score++
+  if (profile.dateOfBirth) score++
+  if (profile.gender) score++
+  if (profile.phone || profile.callingMobile) score++
+
+  // Contact Details (3 points)
+  if (profile.email || profile.studentEmail) score++
+  if (profile.currentAddress) score++
+  if (profile.permanentAddress) score++
+
+  // Academic Information (5 points)
+  if (profile.usn) score++
+  if (profile.branch) score++
+  if (profile.cgpa || profile.finalCgpa) score++
+  if (profile.tenthPercentage) score++
+  if (profile.twelfthPercentage) score++
+
+  // Professional Information (4 points)
+  if (profile.skills && profile.skills.length > 0) score++
+  if (profile.resume || profile.resumeUpload) score++
+  if (profile.linkedin || profile.linkedinLink) score++
+  if (profile.github || profile.githubLink) score++
+
+  // KYC Status (3 points)
+  if (profile.kycStatus === 'VERIFIED') score += 3
+  else if (profile.kycStatus === 'UNDER_REVIEW') score += 1
+
+  return Math.round((score / totalFields) * 100)
 }

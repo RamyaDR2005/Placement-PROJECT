@@ -17,5 +17,11 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
+  "registries": {
+    "@animate-ui": "https://animate-ui.com/r/{name}.json",
+    "@motion-primitives": "https://motion-primitives.com/r/{name}.json",
+    "@react-bits": "https://reactbits.dev/r/{name}.json",
+    "@blocks": "https://blocks.so/r/{name}.json"
+  },
   "iconLibrary": "lucide"
 }
