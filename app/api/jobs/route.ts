@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
         const search = searchParams.get("search") || ""
         const category = searchParams.get("category")
+        const jobType = searchParams.get("jobType") // Add jobType parameter
         const workMode = searchParams.get("workMode")
         const tier = searchParams.get("tier")
         const page = parseInt(searchParams.get("page") || "1")
@@ -110,6 +111,10 @@ export async function GET(request: NextRequest) {
 
         if (category && category !== "ALL") {
             where.category = category
+        }
+
+        if (jobType && jobType !== "ALL") {
+            where.jobType = jobType
         }
 
         if (workMode && workMode !== "ALL") {

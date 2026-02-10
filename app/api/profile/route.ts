@@ -87,34 +87,114 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // Prevent users from manually setting KYC status to VERIFIED or REJECTED
+    // Only admins can set these statuses via the admin API
+    if (sanitizedData.kycStatus && ['VERIFIED', 'REJECTED'].includes(sanitizedData.kycStatus)) {
+      delete sanitizedData.kycStatus
+    }
+
     // Check if profile exists
     const existingProfile = await prisma.profile.findUnique({
       where: { userId: session.user.id }
     })
 
+    // Merge existing profile data with new data to check completeness
+    const mergedData = existingProfile ? { ...existingProfile, ...sanitizedData } : sanitizedData
+
+    // Function to check if profile is complete enough for KYC review
+    const isProfileComplete = (profileData: any): boolean => {
+      // Check essential fields
+      const hasPersonalInfo = !!(
+        profileData.firstName &&
+        profileData.lastName &&
+        profileData.dateOfBirth &&
+        profileData.gender &&
+        profileData.usn
+      )
+
+      const hasContactInfo = !!(
+        profileData.callingMobile &&
+        profileData.email
+      )
+
+      const hasAcademicInfo = !!(
+        profileData.tenthPercentage !== null &&
+        profileData.tenthPercentage !== undefined &&
+        profileData.tenthPassingYear
+      )
+
+      const hasEngineeringInfo = !!(
+        profileData.branch &&
+        profileData.batch &&
+        profileData.cgpa !== null &&
+        profileData.cgpa !== undefined
+      )
+
+      // Check if resume is uploaded (important for KYC)
+      const hasResume = !!(profileData.resume || profileData.resumeUpload)
+
+      return hasPersonalInfo && hasContactInfo && hasAcademicInfo && hasEngineeringInfo && hasResume
+    }
+
+    // Determine KYC status update
+    let kycStatusUpdate: { kycStatus?: 'PENDING' | 'UNDER_REVIEW' | 'INCOMPLETE' | 'VERIFIED' } = {}
+    
+    // Only auto-update KYC status if it hasn't been set by an admin (VERIFIED/REJECTED)
+    const currentKycStatus = existingProfile?.kycStatus || 'PENDING'
+    const isAdminSetStatus = currentKycStatus === 'VERIFIED' || currentKycStatus === 'REJECTED'
+    
+    // Check if College ID card is being uploaded or already exists
+    const hasCollegeId = !!(sanitizedData.collegeIdCard || mergedData.collegeIdCard || existingProfile?.collegeIdCard)
+    
+    if (!isAdminSetStatus) {
+      // If College ID is uploaded and profile is complete, mark as VERIFIED
+      if (hasCollegeId && isProfileComplete(mergedData)) {
+        // Only update to VERIFIED if not already VERIFIED
+        if (currentKycStatus !== 'VERIFIED') {
+          kycStatusUpdate.kycStatus = 'VERIFIED'
+        }
+      }
+      // If profile is complete (without College ID), move to UNDER_REVIEW
+      else if (isProfileComplete(mergedData)) {
+        if (currentKycStatus === 'PENDING' || currentKycStatus === 'INCOMPLETE') {
+          kycStatusUpdate.kycStatus = 'UNDER_REVIEW'
+        }
+      } else if (currentKycStatus === 'UNDER_REVIEW') {
+        // If profile becomes incomplete while UNDER_REVIEW, revert to PENDING
+        kycStatusUpdate.kycStatus = 'PENDING'
+      }
+    }
+
+    // Merge KYC status update with sanitized data
+    const updateData = {
+      ...sanitizedData,
+      ...kycStatusUpdate,
+      updatedAt: new Date()
+    }
+
     let profile
     if (existingProfile) {
       // Update existing profile - ensure user can only update their own profile
+      // Allow updates regardless of current KYC status
       profile = await prisma.profile.update({
         where: {
           userId: session.user.id // Always use session userId
         },
-        data: {
-          ...sanitizedData,
-          updatedAt: new Date()
-        }
+        data: updateData
       })
 
       logSecurityEvent("profile_updated", {
         userId: session.user.id,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        kycStatusChanged: !!kycStatusUpdate.kycStatus,
+        newKycStatus: kycStatusUpdate.kycStatus
       })
     } else {
       // Create new profile
       profile = await prisma.profile.create({
         data: {
           userId: session.user.id, // Always use session userId
-          ...sanitizedData,
+          ...updateData,
         }
       })
 

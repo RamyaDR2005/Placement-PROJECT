@@ -62,7 +62,7 @@ export default async function KYCQueuePage() {
 
             <KYCVerificationQueue
                 pendingVerifications={pendingVerifications}
-                adminId={session.user.id}
+            // adminId={session.user.id}
             />
         </div>
     )

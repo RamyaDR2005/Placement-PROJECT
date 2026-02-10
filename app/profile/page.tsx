@@ -21,7 +21,7 @@ export default async function ProfilePage() {
   return (
     <main className="flex-1 bg-background min-h-screen">
       <div className="container mx-auto py-8 flex flex-col gap-6">
-        <ProfileCompletion />
+        <ProfileCompletion profile={profile} />
       </div>
     </main>
   )

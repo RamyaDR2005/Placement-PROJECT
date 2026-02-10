@@ -80,7 +80,35 @@ export async function POST(
             )
         }
 
-        const { coverLetter } = await request.json()
+        // Handle file upload (resume)
+        let resumeFile: File | null = null
+        let resumeUrl: string | null = null
+
+        const contentType = request.headers.get("content-type")
+        if (contentType?.includes("multipart/form-data")) {
+            const formData = await request.formData()
+            const file = formData.get("resume") as File | null
+            if (file) {
+                resumeFile = file
+                // Upload resume to storage
+                const uploadFormData = new FormData()
+                uploadFormData.append("file", file)
+                uploadFormData.append("folder", "application-resumes")
+
+                const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3500'}/api/upload`, {
+                    method: "POST",
+                    body: uploadFormData,
+                })
+
+                if (uploadResponse.ok) {
+                    const uploadData = await uploadResponse.json()
+                    resumeUrl = uploadData.url
+                }
+            }
+        } else {
+            const body = await request.json()
+            resumeUrl = body.resumeUrl || null
+        }
 
         // Check if job exists and is active
         const job = await prisma.job.findUnique({
@@ -144,10 +172,13 @@ export async function POST(
             )
         }
 
-        // Check KYC status
+        // Check KYC status - must be VERIFIED to apply
         if (profile.kycStatus !== "VERIFIED") {
             return NextResponse.json(
-                { error: "Your profile must be verified before applying to jobs" },
+                { 
+                    error: "Your profile must be verified before applying to jobs. Please complete your profile and upload your College ID card.",
+                    kycStatus: profile.kycStatus
+                },
                 { status: 400 }
             )
         }
@@ -188,19 +219,13 @@ export async function POST(
             data: {
                 jobId: id,
                 userId: session.user.id,
-                resumeUsed: profile.resume || null
+                resumeUsed: resumeUrl || profile.resume || profile.resumeUpload || null
             }
         })
 
-        // Generate QR code for attendance tracking
-        const qrData = JSON.stringify({
-            applicationId: application.id,
-            jobId: id,
-            userId: session.user.id,
-            timestamp: new Date().toISOString()
-        })
-
-        const qrCode = await QRCode.toDataURL(qrData)
+        // Generate QR code with Google Form URL for attendance tracking
+        const googleFormUrl = job.googleFormUrl || "https://forms.gle/placement-attendance-form"
+        const qrCode = await QRCode.toDataURL(googleFormUrl)
 
         // Create attendance record with QR code
         await prisma.attendance.create({

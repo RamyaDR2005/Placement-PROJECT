@@ -330,6 +330,7 @@ model Profile {
   workMode           WorkMode? @map("work_mode")
 
   // KYC and Verification
+  collegeIdCard String? @map("college_id_card") // College ID card upload URL
   kycStatus  KYCStatus @default(PENDING) @map("kyc_status")
   verifiedBy String?   @map("verified_by") // Admin ID who verified
   verifiedAt DateTime? @map("verified_at")
@@ -545,6 +546,7 @@ model Job {
   deadline      DateTime?
   startDate     DateTime? @map("start_date")
   noOfPositions Int?      @default(1) @map("no_of_positions")
+  googleFormUrl String?   @map("google_form_url") // Google Form URL for application submission
 
   // Status
   status    JobStatus @default(ACTIVE)

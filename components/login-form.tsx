@@ -115,24 +115,15 @@ export function LoginForm({
             { duration: 10000 }
           )
         } else {
-          toast.error("Invalid email or password")
+          toast.error("Invalid email or password for student")
         }
       } else if (result?.ok) {
         toast.success("Welcome back!", {
           icon: <IconCircleCheck className="h-5 w-5 text-green-500" />,
         })
 
-        try {
-          const profileResponse = await fetch("/api/profile")
-          if (profileResponse.ok) {
-            const profileData = await profileResponse.json()
-            router.push(profileData.profile?.isComplete ? "/dashboard" : "/profile")
-          } else {
-            router.push("/profile")
-          }
-        } catch {
-          router.push("/profile")
-        }
+        // Redirect to dashboard after successful login
+        router.push("/dashboard")
       }
     } catch {
       toast.error("Something went wrong. Please try again.")
@@ -143,7 +134,7 @@ export function LoginForm({
 
   const handleGoogleLogin = () => {
     setIsGoogleLoading(true)
-    signIn("google", { callbackUrl: "/profile" })
+    signIn("google", { callbackUrl: "/dashboard" })
   }
 
   return (
