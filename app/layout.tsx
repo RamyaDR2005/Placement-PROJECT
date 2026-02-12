@@ -29,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${manrope.variable} font-sans antialiased min-h-screen bg-white selection:bg-primary/20`}
       >
         <SessionProvider>

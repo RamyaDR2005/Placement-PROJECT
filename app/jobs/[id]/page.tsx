@@ -72,6 +72,7 @@ interface Profile {
     usn?: string
     resume?: string
     resumeUpload?: string
+    kycStatus?: string
 }
 
 export default function JobDetailPage() {
@@ -513,7 +514,7 @@ export default function JobDetailPage() {
                     profile={profile}
                     job={job}
                     onConfirm={handleConfirmApplication}
-                    isSubmitting={isApplying}
+                    isApplying={isApplying}
                 />
             )}
         </div>

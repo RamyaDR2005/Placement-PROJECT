@@ -137,22 +137,19 @@ export async function PUT(request: NextRequest) {
     }
 
     // Determine KYC status update
-    let kycStatusUpdate: { kycStatus?: 'PENDING' | 'UNDER_REVIEW' | 'INCOMPLETE' | 'VERIFIED' } = {}
-    
+    let kycStatusUpdate: { kycStatus?: 'PENDING' | 'UNDER_REVIEW' | 'INCOMPLETE' | 'VERIFIED' | 'REJECTED' } = {}
+
     // Only auto-update KYC status if it hasn't been set by an admin (VERIFIED/REJECTED)
     const currentKycStatus = existingProfile?.kycStatus || 'PENDING'
     const isAdminSetStatus = currentKycStatus === 'VERIFIED' || currentKycStatus === 'REJECTED'
-    
+
     // Check if College ID card is being uploaded or already exists
     const hasCollegeId = !!(sanitizedData.collegeIdCard || mergedData.collegeIdCard || existingProfile?.collegeIdCard)
-    
+
     if (!isAdminSetStatus) {
       // If College ID is uploaded and profile is complete, mark as VERIFIED
       if (hasCollegeId && isProfileComplete(mergedData)) {
-        // Only update to VERIFIED if not already VERIFIED
-        if (currentKycStatus !== 'VERIFIED') {
-          kycStatusUpdate.kycStatus = 'VERIFIED'
-        }
+        kycStatusUpdate.kycStatus = 'VERIFIED'
       }
       // If profile is complete (without College ID), move to UNDER_REVIEW
       else if (isProfileComplete(mergedData)) {

@@ -157,6 +157,7 @@ export async function POST(
             select: {
                 id: true,
                 resume: true,
+                resumeUpload: true,
                 cgpa: true,
                 branch: true,
                 batch: true,
@@ -175,7 +176,7 @@ export async function POST(
         // Check KYC status - must be VERIFIED to apply
         if (profile.kycStatus !== "VERIFIED") {
             return NextResponse.json(
-                { 
+                {
                     error: "Your profile must be verified before applying to jobs. Please complete your profile and upload your College ID card.",
                     kycStatus: profile.kycStatus
                 },

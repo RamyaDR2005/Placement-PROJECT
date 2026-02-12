@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -14,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,17 +23,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { 
-  Search, 
-  Filter, 
-  Download, 
+import {
+  Search,
+  Filter,
+  Download,
   MoreHorizontal,
   Eye,
   Mail,
@@ -73,6 +74,7 @@ interface StudentManagementProps {
 }
 
 export function StudentManagement({ students, adminId }: StudentManagementProps) {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBranch, setFilterBranch] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
@@ -88,14 +90,14 @@ export function StudentManagement({ students, adminId }: StudentManagementProps)
 
   // Filter students based on search and filters
   const filteredStudents = students.filter(student => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.profile?.usn?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesBranch = filterBranch === "all" || student.profile?.branch === filterBranch
-    
-    const matchesStatus = filterStatus === "all" || 
+
+    const matchesStatus = filterStatus === "all" ||
       (filterStatus === "complete" && student.profile?.isComplete) ||
       (filterStatus === "incomplete" && !student.profile?.isComplete) ||
       (filterStatus === "verified" && student.profile?.kycStatus === "VERIFIED") ||
@@ -204,7 +206,7 @@ export function StudentManagement({ students, adminId }: StudentManagementProps)
                 />
               </div>
             </div>
-            
+
             <Select value={filterBranch} onValueChange={setFilterBranch}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Filter by branch" />
@@ -316,16 +318,20 @@ export function StudentManagement({ students, adminId }: StudentManagementProps)
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => router.push(`/admin/students/${student.id}`)}>
                             <Eye className="w-4 h-4" />
                             View Profile
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => {
+                            if (student.email) {
+                              window.location.href = `mailto:${student.email}`
+                            }
+                          }}>
                             <Mail className="w-4 h-4" />
                             Send Message
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => router.push(`/admin/students/${student.id}`)}>
                             <UserCheck className="w-4 h-4" />
                             Verify KYC
                           </DropdownMenuItem>

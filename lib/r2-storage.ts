@@ -34,10 +34,10 @@ const PUBLIC_DOMAIN = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN || "" // Your cust
 export function generateFilename(userId: string, type: string, originalFilename: string): string {
   const timestamp = Date.now()
   const fileExtension = originalFilename.split(".").pop()?.toLowerCase()
-  
+
   // Clean and format the filename
   const sanitizedType = type.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()
-  
+
   return `users/${userId}/${sanitizedType}/${sanitizedType}-${timestamp}.${fileExtension}`
 }
 
@@ -82,7 +82,7 @@ export async function uploadToR2(
     }
   } catch (error) {
     console.error("Error uploading to R2:", error)
-    
+
     // Provide more specific error messages
     if (error instanceof Error) {
       if (error.message.includes("not configured")) {
@@ -92,7 +92,7 @@ export async function uploadToR2(
         throw new Error("Storage authentication failed. Please contact support.")
       }
     }
-    
+
     throw new Error("Failed to upload file to storage")
   }
 }
@@ -102,6 +102,10 @@ export async function uploadToR2(
  */
 export async function deleteFromR2(key: string): Promise<void> {
   try {
+    if (!r2Client) {
+      throw new Error("Storage service is not configured. Please set R2 environment variables.")
+    }
+
     const command = new DeleteObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,

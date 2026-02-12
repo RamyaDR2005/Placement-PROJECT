@@ -148,21 +148,21 @@ export async function generateVerificationToken(email: string): Promise<string> 
 
 export async function sendVerificationEmail(email: string, name: string) {
   const startTime = Date.now()
-  
+
   try {
     // Generate token
     const token = await generateVerificationToken(email)
     const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}`
-    
+
     // Get production-ready transporter
     const emailTransporter = getTransporter()
-    
+
     if (!emailTransporter) {
       throw new Error('Failed to initialize email transporter')
     }
-    
+
     console.log(`📧 Sending verification email to ${email}...`)
-    
+
     // Send email with optimized settings (no connection verification for speed)
     const result = await emailTransporter.sendMail({
       from: `"SDMCET - Campus Connect" <${process.env.EMAIL_FROM}>`, // Branded sender name
@@ -170,23 +170,214 @@ export async function sendVerificationEmail(email: string, name: string) {
       subject: '✨ Verify your email - Campus Connect',
       html: createVerificationEmailHTML(name, verificationUrl),
     })
-    
+
     const sendTime = Date.now() - startTime
     console.log(`✅ Verification email sent to ${email} in ${sendTime}ms (MessageID: ${result.messageId})`)
-    
-    return { 
-      success: true, 
-      messageId: result.messageId, 
+
+    return {
+      success: true,
+      messageId: result.messageId,
       sendTime,
       method: 'Production AWS SES SMTP (pooling, rate-limiting)'
     }
   } catch (error) {
     const sendTime = Date.now() - startTime
     console.error(`❌ Error sending verification email to ${email} in ${sendTime}ms:`, error)
-    
+
     // Provide more specific error information for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     throw new Error(`Failed to send verification email: ${errorMessage}`)
+  }
+}
+
+// Password Reset Email Template
+function createPasswordResetEmailHTML(name: string, resetUrl: string): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Your Password - Campus Connect</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0b; color: #f0f0f0;">
+      <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1a1b1e 0%, #222327 100%);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 30px; text-align: center; border-radius: 0;">
+          <div style="background: rgba(255,255,255,0.1); display: inline-block; padding: 12px; border-radius: 16px; margin-bottom: 16px;">
+            <div style="width: 48px; height: 48px; background: #ffffff; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #ef4444;">🔐</div>
+          </div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">Password Reset</h1>
+          <p style="margin: 8px 0 0 0; font-size: 16px; color: rgba(255,255,255,0.9); font-weight: 500;">SDMCET Campus Connect</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="padding: 40px 30px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #f0f0f0; line-height: 1.3;">Hi ${name}! 👋</h2>
+          
+          <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #a0a0a0;">
+            We received a request to reset the password for your Campus Connect account. Click the button below to create a new password.
+          </p>
+          
+          <!-- CTA Button -->
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
+              🔑 Reset Password
+            </a>
+          </div>
+          
+          <!-- Info Card -->
+          <div style="background: #2a2c33; border: 1px solid #33353a; border-radius: 12px; padding: 20px; margin: 24px 0;">
+            <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #f0f0f0;">
+              <span style="margin-right: 8px;">⏰</span>Link Expires Soon
+            </h3>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #a0a0a0;">
+              This password reset link expires in <strong style="color: #ef4444;">1 hour</strong> for your security. If you didn't request this, you can safely ignore this email — your password will remain unchanged.
+            </p>
+          </div>
+          
+          <!-- Alternative Link -->
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #33353a;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #a0a0a0;">
+              Can't click the button? Copy and paste this link into your browser:
+            </p>
+            <p style="margin: 0; word-break: break-all; font-size: 12px; color: #ef4444; background: #222327; padding: 12px; border-radius: 8px; font-family: 'IBM Plex Mono', monospace;">
+              ${resetUrl}
+            </p>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #161618; padding: 30px; text-align: center; border-top: 1px solid #33353a;">
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #a0a0a0;">
+            This email was sent by <strong style="color: #f0f0f0;">SDMCET Campus Connect</strong>
+          </p>
+          <p style="margin: 0; font-size: 12px; color: #666;">
+            If you didn't request a password reset, you can safely ignore this email.
+          </p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #2a2c33;">
+            <p style="margin: 0; font-size: 12px; color: #666;">
+              📧 Contact: placement@sdmcet.ac.in | 🌐 sdmcetinsignia.com
+            </p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+}
+
+export async function generatePasswordResetToken(email: string): Promise<string> {
+  // Delete existing password reset tokens for this email
+  await prisma.verificationToken.deleteMany({
+    where: { identifier: `reset:${email}` }
+  })
+
+  // Generate token
+  const token = crypto.randomBytes(32).toString('hex')
+  const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+  // Store in database with 'reset:' prefix to distinguish from email verification
+  await prisma.verificationToken.create({
+    data: {
+      identifier: `reset:${email}`,
+      token,
+      expires,
+    },
+  })
+
+  return token
+}
+
+export async function sendPasswordResetEmail(email: string, name: string) {
+  const startTime = Date.now()
+
+  try {
+    const token = await generatePasswordResetToken(email)
+    const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`
+
+    const emailTransporter = getTransporter()
+
+    if (!emailTransporter) {
+      throw new Error('Failed to initialize email transporter')
+    }
+
+    console.log(`📧 Sending password reset email to ${email}...`)
+
+    const result = await emailTransporter.sendMail({
+      from: `"SDMCET - Campus Connect" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: '🔐 Reset your password - Campus Connect',
+      html: createPasswordResetEmailHTML(name, resetUrl),
+    })
+
+    const sendTime = Date.now() - startTime
+    console.log(`✅ Password reset email sent to ${email} in ${sendTime}ms (MessageID: ${result.messageId})`)
+
+    return {
+      success: true,
+      messageId: result.messageId,
+      sendTime,
+    }
+  } catch (error) {
+    const sendTime = Date.now() - startTime
+    console.error(`❌ Error sending password reset email to ${email} in ${sendTime}ms:`, error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    throw new Error(`Failed to send password reset email: ${errorMessage}`)
+  }
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<{ success: boolean; email?: string; error?: string }> {
+  try {
+    const resetToken = await prisma.verificationToken.findFirst({
+      where: { token }
+    })
+
+    if (!resetToken || !resetToken.identifier.startsWith('reset:')) {
+      return { success: false, error: 'Invalid or expired token' }
+    }
+
+    if (resetToken.expires < new Date()) {
+      await prisma.verificationToken.delete({
+        where: {
+          identifier_token: {
+            identifier: resetToken.identifier,
+            token: token
+          }
+        }
+      })
+      return { success: false, error: 'Token has expired. Please request a new password reset.' }
+    }
+
+    // Extract the actual email (remove 'reset:' prefix)
+    const email = resetToken.identifier.replace('reset:', '')
+    return { success: true, email }
+  } catch (error) {
+    console.error('❌ Error verifying password reset token:', error)
+    return { success: false, error: 'Internal server error' }
+  }
+}
+
+export async function consumePasswordResetToken(token: string): Promise<{ success: boolean; email?: string; error?: string }> {
+  try {
+    const result = await verifyPasswordResetToken(token)
+    if (!result.success || !result.email) return result
+
+    // Delete the token after use
+    await prisma.verificationToken.delete({
+      where: {
+        identifier_token: {
+          identifier: `reset:${result.email}`,
+          token: token
+        }
+      }
+    })
+
+    return { success: true, email: result.email }
+  } catch (error) {
+    console.error('❌ Error consuming password reset token:', error)
+    return { success: false, error: 'Internal server error' }
   }
 }
 
@@ -202,7 +393,7 @@ export async function verifyEmailToken(token: string): Promise<{ success: boolea
 
     if (verificationToken.expires < new Date()) {
       await prisma.verificationToken.delete({
-        where: { 
+        where: {
           identifier_token: {
             identifier: verificationToken.identifier,
             token: token
@@ -219,7 +410,7 @@ export async function verifyEmailToken(token: string): Promise<{ success: boolea
         data: { emailVerified: new Date() }
       }),
       prisma.verificationToken.delete({
-        where: { 
+        where: {
           identifier_token: {
             identifier: verificationToken.identifier,
             token: token

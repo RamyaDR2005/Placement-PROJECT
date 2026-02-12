@@ -104,7 +104,6 @@ export function CollegeIdStep({ onNext, onPrevious, initialData = {} }: CollegeI
             maxSizeMB={10}
             required
             error={error}
-            initialFile={uploadedUrl ? { url: uploadedUrl, name: "College ID Card" } : undefined}
             onFileChange={handleFileChange}
             placeholder="Drop your College ID card here or click to select"
           />
