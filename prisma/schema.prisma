@@ -475,6 +475,10 @@ model ScheduleEvent {
   status       EventStatus @default(SCHEDULED)
   isVisible    Boolean     @default(true)
 
+  // Optional Job relation
+  jobId String? @map("job_id")
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
   // Relations
   createdBy String
   creator   User            @relation("CreatedEvents", fields: [createdBy], references: [id], onDelete: Cascade)
@@ -564,6 +568,9 @@ model Job {
   rounds           JobRound[]
   driveSessions    DriveSession[]
   roundAttendances RoundAttendance[]
+
+  // Schedule events linked to this job
+  scheduleEvents ScheduleEvent[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

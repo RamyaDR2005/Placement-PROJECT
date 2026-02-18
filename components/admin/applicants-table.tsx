@@ -136,11 +136,14 @@ export function ApplicantsTable({ jobId, jobTitle, applicants }: ApplicantsTable
         }
 
         try {
-            const params = new URLSearchParams()
-            params.set("fields", Array.from(selectedFields).join(","))
-            params.set("applicationIds", Array.from(selectedIds).join(","))
-
-            const response = await fetch(`/api/admin/jobs/${jobId}/applicants/export?${params.toString()}`)
+            const response = await fetch(`/api/admin/jobs/${jobId}/applicants/export`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fields: Array.from(selectedFields),
+                    applicationIds: Array.from(selectedIds),
+                }),
+            })
 
             if (!response.ok) {
                 throw new Error("Export failed")
@@ -172,7 +175,7 @@ export function ApplicantsTable({ jobId, jobTitle, applicants }: ApplicantsTable
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    applicationIds: [applicantToRemove],
+                    applicationId: applicantToRemove,
                     reason: removalReason,
                 }),
             })
@@ -199,16 +202,24 @@ export function ApplicantsTable({ jobId, jobTitle, applicants }: ApplicantsTable
 
         setIsRemoving(true)
         try {
-            const response = await fetch(`/api/admin/jobs/${jobId}/applicants`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    applicationIds: Array.from(selectedIds),
-                    reason: removalReason,
-                }),
-            })
+            // Remove each applicant individually since the API expects a single applicationId
+            const ids = Array.from(selectedIds)
+            let failedCount = 0
+            for (const applicationId of ids) {
+                const response = await fetch(`/api/admin/jobs/${jobId}/applicants`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        applicationId,
+                        reason: removalReason,
+                    }),
+                })
+                if (!response.ok) {
+                    failedCount++
+                }
+            }
 
-            if (!response.ok) {
+            if (failedCount === ids.length) {
                 throw new Error("Failed to remove applicants")
             }
 

@@ -49,7 +49,6 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/favicon.ico") ||
     pathname.startsWith("/uploads/") ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/signup") ||
     pathname.startsWith("/verify-email") ||
     pathname.includes(".")
   ) {

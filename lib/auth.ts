@@ -1,76 +1,30 @@
 import NextAuth from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import bcrypt from "bcryptjs"
+import GoogleProvider from "next-auth/providers/google"
+import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import type { NextAuthConfig } from "next-auth"
 
 const authConfig: NextAuthConfig = {
+  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
 
   providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-
-      async authorize(credentials) {
-        // ✅ FULL TYPE-SAFE GUARDS
-        if (
-          !credentials ||
-          typeof credentials.email !== "string" ||
-          typeof credentials.password !== "string"
-        ) {
-          throw new Error("Invalid email or password")
-        }
-
-        // ✅ SAFE NORMALIZATION
-        const email = credentials.email.toLowerCase().trim()
-        const password = credentials.password
-
-        // ✅ FETCH USER WITH PASSWORD
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            password: true, // 🔴 REQUIRED
-            role: true,
-          },
-        })
-
-        if (!user || !user.password) {
-          throw new Error("Invalid email or password")
-        }
-
-        // ✅ SAFE BCRYPT COMPARE
-        const isValid = await bcrypt.compare(password, user.password)
-
-        if (!isValid) {
-          throw new Error("Invalid email or password")
-        }
-
-        // ✅ RETURN USER (NO PASSWORD)
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        }
-      },
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
 
   pages: {
     signIn: "/login",
+    error: "/error", // Error code passed in query string as ?error=
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
         token.role = (user as any).role

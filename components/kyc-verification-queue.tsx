@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from "@/components/ui/dialog"
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,13 +27,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog"
-import { 
-  Eye, 
-  Check, 
-  X, 
-  Clock, 
-  User, 
-  Mail, 
+import {
+  Eye,
+  Check,
+  X,
+  Clock,
+  User,
+  Mail,
   Calendar,
   FileText,
   Download,
@@ -181,7 +181,7 @@ export function KYCVerificationQueue({ pendingVerifications, adminId }: KYCVerif
                           {profile.user.name?.charAt(0) || profile.firstName?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div>
                         <h3 className="font-medium">
                           {profile.user.name || `${profile.firstName} ${profile.lastName}` || 'Unknown User'}
@@ -209,7 +209,7 @@ export function KYCVerificationQueue({ pendingVerifications, adminId }: KYCVerif
                       <Badge className={getStatusColor(profile.kycStatus)}>
                         {profile.kycStatus.replace('_', ' ')}
                       </Badge>
-                      
+
                       <div className="flex items-center gap-2">
                         <Dialog>
                           <DialogTrigger asChild>
@@ -225,7 +225,7 @@ export function KYCVerificationQueue({ pendingVerifications, adminId }: KYCVerif
                                 Review student profile and documents for KYC verification
                               </DialogDescription>
                             </DialogHeader>
-                            
+
                             {selectedProfile && (
                               <div className="space-y-6">
                                 {/* Basic Information */}
@@ -298,6 +298,7 @@ export function KYCVerificationQueue({ pendingVerifications, adminId }: KYCVerif
                                       >
                                         Reject Profile
                                       </AlertDialogAction>
+
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>

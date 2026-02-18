@@ -27,7 +27,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { title, description, date, time, duration, location, type, company, maxAttendees, isVisible, status } = body
+    const { title, description, date, time, duration, location, type, company, maxAttendees, isVisible, status, jobId } = body
 
     // Combine date and time if provided
     let eventDateTime
@@ -46,8 +46,9 @@ export async function PUT(
     if (maxAttendees) updateData.maxAttendees = maxAttendees
     if (isVisible !== undefined) updateData.isVisible = isVisible
     if (status) updateData.status = status.toUpperCase()
+    if (jobId !== undefined) updateData.jobId = jobId || null
 
-    const event = await prisma.scheduleEvent.update({
+    const event: any = await prisma.scheduleEvent.update({
       where: { id },
       data: updateData,
       include: {
@@ -56,6 +57,13 @@ export async function PUT(
             id: true,
             name: true,
             email: true
+          }
+        },
+        job: {
+          select: {
+            id: true,
+            title: true,
+            companyName: true
           }
         },
         attendees: {
@@ -87,7 +95,10 @@ export async function PUT(
       maxAttendees: event.maxAttendees,
       status: event.status.toLowerCase(),
       isVisible: event.isVisible,
-      createdBy: event.createdBy
+      createdBy: event.createdBy,
+      jobId: event.jobId,
+      jobTitle: event.job?.title || null,
+      jobCompanyName: event.job?.companyName || null
     }
 
     return NextResponse.json(transformedEvent)
@@ -144,7 +155,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const event = await prisma.scheduleEvent.findUnique({
+    const event: any = await prisma.scheduleEvent.findUnique({
       where: { id },
       include: {
         creator: {
@@ -152,6 +163,13 @@ export async function GET(
             id: true,
             name: true,
             email: true
+          }
+        },
+        job: {
+          select: {
+            id: true,
+            title: true,
+            companyName: true
           }
         },
         attendees: {
@@ -198,7 +216,10 @@ export async function GET(
       maxAttendees: event.maxAttendees,
       status: event.status.toLowerCase(),
       isVisible: event.isVisible,
-      createdBy: event.createdBy
+      createdBy: event.createdBy,
+      jobId: event.jobId,
+      jobTitle: event.job?.title || null,
+      jobCompanyName: event.job?.companyName || null
     }
 
     return NextResponse.json(transformedEvent)

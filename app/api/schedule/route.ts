@@ -2,28 +2,6 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
 
-type ScheduleEvent = {
-  id: string
-  title: string
-  description: string | null
-  date: Date
-  duration: number | null
-  location: string | null
-  type: string
-  company: string | null
-  status: string
-  isVisible: boolean
-  createdBy: string
-  maxAttendees: number | null
-  attendees: {
-    user: {
-      id: string
-      name: string | null
-      email: string
-    }
-  }[]
-}
-
 export async function GET() {
   try {
     const session = await auth()
@@ -40,7 +18,7 @@ export async function GET() {
 
     const isAdmin = user?.role === 'ADMIN'
 
-    const events = await prisma.scheduleEvent.findMany({
+    const events: any[] = await prisma.scheduleEvent.findMany({
       where: isAdmin ? {} : { isVisible: true },
       include: {
         creator: {
@@ -48,6 +26,13 @@ export async function GET() {
             id: true,
             name: true,
             email: true
+          }
+        },
+        job: {
+          select: {
+            id: true,
+            title: true,
+            companyName: true
           }
         },
         attendees: {
@@ -69,7 +54,7 @@ export async function GET() {
     })
 
     // Transform the data to match the frontend interface
-    const transformedEvents = events.map((event: ScheduleEvent) => ({
+    const transformedEvents = events.map((event: any) => ({
       id: event.id,
       title: event.title,
       description: event.description,
@@ -83,7 +68,10 @@ export async function GET() {
       maxAttendees: event.maxAttendees,
       status: event.status.toLowerCase(),
       isVisible: event.isVisible,
-      createdBy: event.createdBy
+      createdBy: event.createdBy,
+      jobId: event.jobId,
+      jobTitle: event.job?.title || null,
+      jobCompanyName: event.job?.companyName || null
     }))
 
     return NextResponse.json(transformedEvents)
@@ -114,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, date, time, duration, location, type, company, maxAttendees, isVisible } = body
+    const { title, description, date, time, duration, location, type, company, maxAttendees, isVisible, jobId } = body
 
     if (!title || !date || !time) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -123,7 +111,7 @@ export async function POST(request: NextRequest) {
     // Combine date and time
     const eventDateTime = new Date(`${date}T${time}:00`)
 
-    const event = await prisma.scheduleEvent.create({
+    const event: any = await prisma.scheduleEvent.create({
       data: {
         title,
         description,
@@ -134,7 +122,8 @@ export async function POST(request: NextRequest) {
         company,
         maxAttendees,
         isVisible: isVisible ?? true,
-        createdBy: session.user.id
+        createdBy: session.user.id,
+        jobId: jobId || null
       },
       include: {
         creator: {
@@ -142,6 +131,13 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             email: true
+          }
+        },
+        job: {
+          select: {
+            id: true,
+            title: true,
+            companyName: true
           }
         },
         attendees: {
@@ -173,7 +169,10 @@ export async function POST(request: NextRequest) {
       maxAttendees: event.maxAttendees,
       status: event.status.toLowerCase(),
       isVisible: event.isVisible,
-      createdBy: event.createdBy
+      createdBy: event.createdBy,
+      jobId: event.jobId,
+      jobTitle: event.job?.title || null,
+      jobCompanyName: event.job?.companyName || null
     }
 
     return NextResponse.json(transformedEvent, { status: 201 })

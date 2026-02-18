@@ -30,7 +30,9 @@ interface JobFormData {
     tier: string
     category: string
     isDreamOffer: boolean
-    salary: number
+    salary: string
+    minSalary?: number
+    maxSalary?: number
     minCGPA?: number
     allowedBranches: string[]
     eligibleBatch?: string
@@ -76,11 +78,13 @@ export function JobForm({ initialData, onSubmit, isLoading = false }: JobFormPro
         tier: initialData?.tier || "TIER_3",
         category: initialData?.category || "FTE",
         isDreamOffer: initialData?.isDreamOffer || false,
-        salary: initialData?.salary || 0,
+        salary: initialData?.salary || "",
+        minSalary: initialData?.minSalary,
+        maxSalary: initialData?.maxSalary,
         minCGPA: initialData?.minCGPA,
         allowedBranches: initialData?.allowedBranches || [],
         eligibleBatch: initialData?.eligibleBatch || "",
-        maxBacklogs: initialData?.maxBacklogs || 0,
+        maxBacklogs: initialData?.maxBacklogs ?? 0,
         requiredSkills: initialData?.requiredSkills || [],
         preferredSkills: initialData?.preferredSkills || [],
         deadline: initialData?.deadline || "",
@@ -271,7 +275,7 @@ export function JobForm({ initialData, onSubmit, isLoading = false }: JobFormPro
                                 type="number"
                                 min="0"
                                 placeholder="e.g., 0"
-                                value={formData.maxBacklogs || ""}
+                                value={formData.maxBacklogs ?? ""}
                                 onChange={e => setFormData(prev => ({ ...prev, maxBacklogs: e.target.value ? parseInt(e.target.value) : 0 }))}
                             />
                         </div>
@@ -317,18 +321,27 @@ export function JobForm({ initialData, onSubmit, isLoading = false }: JobFormPro
                     <CardDescription>Set the placement tier and job category</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="salary">Salary (LPA) *</Label>
+                            <Label htmlFor="salary">Salary (Display Text) *</Label>
                             <Input
                                 id="salary"
+                                required
+                                placeholder="e.g., 6-8 LPA"
+                                value={formData.salary}
+                                onChange={e => setFormData(prev => ({ ...prev, salary: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="maxSalary">Max Salary (LPA)</Label>
+                            <Input
+                                id="maxSalary"
                                 type="number"
                                 step="0.1"
                                 min="0"
-                                required
                                 placeholder="e.g., 8.5"
-                                value={formData.salary || ""}
-                                onChange={e => setFormData(prev => ({ ...prev, salary: e.target.value ? parseFloat(e.target.value) : 0 }))}
+                                value={formData.maxSalary || ""}
+                                onChange={e => setFormData(prev => ({ ...prev, maxSalary: e.target.value ? parseFloat(e.target.value) : undefined }))}
                             />
                             <p className="text-xs text-muted-foreground">
                                 Tier auto-calculated: ≤5 LPA = Tier 3, 5-9 LPA = Tier 2, &gt;9 LPA = Tier 1

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Calendar, Clock, MapPin, Users, Plus, Edit2, Trash2, Eye, UserPlus, UserMinus } from "lucide-react"
+import { Calendar, Clock, MapPin, Users, Plus, Edit2, Trash2, Eye, UserPlus, UserMinus, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -30,6 +30,15 @@ interface ScheduleEvent {
   isVisible: boolean
   createdBy: string
   isRegistered?: boolean
+  jobId?: string | null
+  jobTitle?: string | null
+  jobCompanyName?: string | null
+}
+
+interface JobTitle {
+  id: string
+  title: string
+  companyName: string
 }
 
 interface SchedulerProps {
@@ -53,6 +62,7 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
   const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null)
   const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'today'>('upcoming')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [jobs, setJobs] = useState<JobTitle[]>([])
 
   const [newEvent, setNewEvent] = useState<Partial<ScheduleEvent>>({
     title: '',
@@ -64,7 +74,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
     type: 'meeting',
     company: '',
     maxAttendees: 10,
-    isVisible: true
+    isVisible: true,
+    jobId: null
   })
 
   // Fetch events from API
@@ -85,8 +96,24 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
     }
   }
 
+  // Fetch job titles for dropdown (admin only)
+  const fetchJobs = async () => {
+    try {
+      const response = await fetch('/api/jobs/titles')
+      if (response.ok) {
+        const data = await response.json()
+        setJobs(data)
+      }
+    } catch (error) {
+      console.error('Error fetching job titles:', error)
+    }
+  }
+
   useEffect(() => {
     fetchEvents()
+    if (isAdmin) {
+      fetchJobs()
+    }
   }, [])
 
   const resetNewEvent = () => {
@@ -100,7 +127,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
       type: 'meeting',
       company: '',
       maxAttendees: 10,
-      isVisible: true
+      isVisible: true,
+      jobId: null
     })
   }
 
@@ -149,7 +177,7 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
 
       if (response.ok) {
         const updatedEvent = await response.json()
-        setEvents(events.map(event => 
+        setEvents(events.map(event =>
           event.id === editingEvent.id ? updatedEvent : event
         ))
         setEditingEvent(null)
@@ -191,8 +219,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
 
       if (response.ok) {
         // Update the event to show increased attendee count and registration status
-        setEvents(events.map(event => 
-          event.id === eventId 
+        setEvents(events.map(event =>
+          event.id === eventId
             ? { ...event, attendees: event.attendees + 1, isRegistered: true }
             : event
         ))
@@ -215,8 +243,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
 
       if (response.ok) {
         // Update the event to show decreased attendee count and registration status
-        setEvents(events.map(event => 
-          event.id === eventId 
+        setEvents(events.map(event =>
+          event.id === eventId
             ? { ...event, attendees: event.attendees - 1, isRegistered: false }
             : event
         ))
@@ -266,10 +294,10 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
     })
   }
 
@@ -296,7 +324,7 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
             {isAdmin ? 'Manage placement events and schedules' : 'View your upcoming placement events'}
           </p>
         </div>
-        
+
         {isAdmin && (
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
@@ -312,7 +340,7 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                   Add a new placement event to the schedule
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="title">Event Title *</Label>
@@ -382,8 +410,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
 
                 <div>
                   <Label htmlFor="type">Event Type</Label>
-                  <Select 
-                    value={newEvent.type} 
+                  <Select
+                    value={newEvent.type}
                     onValueChange={(value) => setNewEvent({ ...newEvent, type: value as ScheduleEvent['type'] })}
                   >
                     <SelectTrigger>
@@ -417,6 +445,26 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                     onChange={(e) => setNewEvent({ ...newEvent, company: e.target.value })}
                     placeholder="e.g., TechCorp Solutions"
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="jobId">Job Title</Label>
+                  <Select
+                    value={newEvent.jobId || 'none'}
+                    onValueChange={(value) => setNewEvent({ ...newEvent, jobId: value === 'none' ? null : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a job (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.title} — {job.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -486,7 +534,7 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
             const typeInfo = getEventTypeInfo(event.type)
             const isToday = isEventToday(event.date)
             const isUpcoming = isEventUpcoming(event.date, event.time)
-            
+
             return (
               <Card key={event.id} className={cn(
                 "transition-all duration-200 hover:shadow-md",
@@ -539,6 +587,13 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                           <span className="font-medium">Company:</span> {event.company}
                         </div>
                       )}
+
+                      {event.jobTitle && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Briefcase className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium">Job:</span> {event.jobTitle}
+                        </div>
+                      )}
                     </div>
 
                     {isAdmin && (
@@ -583,16 +638,16 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                           </DialogContent>
                         </Dialog>
 
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => setEditingEvent(event)}
                         >
                           <Edit2 className="w-4 h-4" />
                         </Button>
-                        
-                        <Button 
-                          variant="outline" 
+
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleDeleteEvent(event.id)}
                         >
@@ -604,8 +659,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                     {!isAdmin && isUpcoming && (
                       <div className="flex gap-2 ml-4">
                         {event.isRegistered ? (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleUnregisterFromEvent(event.id)}
                             className="text-red-600 hover:text-red-700"
@@ -614,8 +669,8 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                             Unregister
                           </Button>
                         ) : (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleRegisterForEvent(event.id)}
                             disabled={!!(event.maxAttendees && event.attendees >= event.maxAttendees)}
@@ -643,7 +698,7 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
               <DialogTitle>Edit Event</DialogTitle>
               <DialogDescription>Update event details</DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div>
                 <Label htmlFor="edit-title">Event Title</Label>
@@ -693,6 +748,26 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
                   onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
                 />
               </div>
+
+              <div>
+                <Label htmlFor="edit-jobId">Job Title</Label>
+                <Select
+                  value={editingEvent.jobId || 'none'}
+                  onValueChange={(value) => setEditingEvent({ ...editingEvent, jobId: value === 'none' ? null : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a job (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {jobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        {job.title} — {job.companyName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <DialogFooter>
@@ -709,3 +784,5 @@ export function Scheduler({ isAdmin = false, userId }: SchedulerProps) {
     </div>
   )
 }
+
+

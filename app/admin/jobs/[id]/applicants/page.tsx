@@ -170,7 +170,7 @@ export default async function JobApplicantsPage({ params }: { params: Promise<{ 
                             <p className="text-muted-foreground">Placed</p>
                         </div>
                         <div className="text-center p-3 bg-muted rounded-lg">
-                            <p className="text-2xl font-bold">₹{job.salary} LPA</p>
+                            <p className="text-2xl font-bold">{job.salary || (job.maxSalary ? `${job.maxSalary} LPA` : 'N/A')}</p>
                             <p className="text-muted-foreground">Package</p>
                         </div>
                     </div>
